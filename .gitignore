@@ -1,0 +1,24 @@
+# Documentation de repère perso — pas versionnée, jamais poussée sur GitHub
+docs/
+
+# Notes d'apprentissage personnelles — jamais versionnées
+notes-apprentissage/
+
+# Dépendances
+node_modules/
+
+# Build
+backend/dist/
+
+# Secrets — jamais commités, ni maintenant ni plus tard
+.env
+backend/.env
+
+# Artefacts Windows/WSL (flux de données alternatifs sur fichiers copiés)
+*:Zone.Identifier
+
+# Éditeurs / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
