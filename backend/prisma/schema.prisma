@@ -1,0 +1,156 @@
+// ================================================
+// SCHEMA KOKO V3 — decoupe et discute modele par modele
+// avec l'utilisateur avant d'etre ecrit ici.
+// ================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum RoleUtilisateur {
+  ADMIN
+  ORGANISATEUR
+  JOUEUR
+}
+
+enum StatutTournoi {
+  A_VENIR
+  ACTIF
+  TERMINE
+}
+
+enum StatutMatch {
+  A_VENIR
+  EN_COURS
+  EN_RETARD
+  REPORTE
+  TERMINE
+  ANNULE
+}
+
+enum StatutCertification {
+  EN_ATTENTE
+  CERTIFIE
+  SUSPENDU
+}
+
+model User {
+  id                 Int             @id @default(autoincrement())
+  email              String          @unique @db.VarChar(30)
+  motDePasse         String          @db.VarChar(60)
+  role               RoleUtilisateur
+  actif              Boolean         @default(true)
+  mustChangePassword Boolean         @default(true)
+  emailReel          String?         @db.VarChar(254)
+  nom                String          @db.VarChar(100)
+  prenom             String          @db.VarChar(100)
+  createdAt          DateTime        @default(now())
+
+  joueur   Joueur?
+  tournois Tournoi[]
+}
+
+model Joueur {
+  id            Int       @id @default(autoincrement())
+  idKoko        String    @unique @db.VarChar(20)
+  nomLegal      String    @db.VarChar(100)
+  prenom        String    @db.VarChar(100)
+  surnom        String?   @db.VarChar(50)
+  dateNaissance DateTime? @db.Date
+  userId        Int       @unique
+  createdAt     DateTime  @default(now())
+
+  user    User           @relation(fields: [userId], references: [id])
+  equipes EquipeJoueur[]
+  stats   Stat[]
+}
+
+model Tournoi {
+  id             Int           @id @default(autoincrement())
+  nom            String        @db.VarChar(150)
+  lieu           String        @db.VarChar(150)
+  description    String?
+  dateDebut      DateTime      @db.Date
+  dateFin        DateTime      @db.Date
+  statut         StatutTournoi @default(A_VENIR)
+  organisateurId Int
+  createdAt      DateTime      @default(now())
+
+  organisateur User     @relation(fields: [organisateurId], references: [id])
+  equipes      Equipe[]
+  matchs       Match[]
+}
+
+model Equipe {
+  id        Int     @id @default(autoincrement())
+  nom       String  @db.VarChar(100)
+  couleur   String  @db.VarChar(7)
+  logo      String?
+  tournoiId Int
+
+  tournoi Tournoi        @relation(fields: [tournoiId], references: [id])
+  joueurs EquipeJoueur[]
+  matchs1 Match[]        @relation("Equipe1")
+  matchs2 Match[]        @relation("Equipe2")
+  stats   Stat[]
+
+  @@index([tournoiId])
+}
+
+model EquipeJoueur {
+  id              Int                 @id @default(autoincrement())
+  equipeId        Int
+  joueurId        Int
+  numeroDeMaillot Int
+  statut          StatutCertification @default(EN_ATTENTE)
+
+  equipe Equipe @relation(fields: [equipeId], references: [id])
+  joueur Joueur @relation(fields: [joueurId], references: [id])
+
+  @@unique([equipeId, joueurId])
+  @@unique([equipeId, numeroDeMaillot])
+}
+
+model Match {
+  id            Int         @id @default(autoincrement())
+  tournoiId     Int
+  equipe1Id     Int
+  equipe2Id     Int
+  date          DateTime
+  dateOriginale DateTime?
+  lieu          String      @db.VarChar(150)
+  type          String      @db.VarChar(50)
+  statut        StatutMatch @default(A_VENIR)
+  score1        Int?
+  score2        Int?
+  arbitre       String?     @db.VarChar(100)
+
+  tournoi Tournoi @relation(fields: [tournoiId], references: [id])
+  equipe1 Equipe  @relation("Equipe1", fields: [equipe1Id], references: [id])
+  equipe2 Equipe  @relation("Equipe2", fields: [equipe2Id], references: [id])
+  stats   Stat[]
+
+  @@index([tournoiId])
+}
+
+model Stat {
+  id       Int @id @default(autoincrement())
+  matchId  Int
+  joueurId Int
+  equipeId Int
+  points   Int @default(0)
+  fautes   Int @default(0)
+  tempsJeu Int @default(0)
+
+  match  Match  @relation(fields: [matchId], references: [id])
+  joueur Joueur @relation(fields: [joueurId], references: [id])
+  equipe Equipe @relation(fields: [equipeId], references: [id])
+
+  @@unique([matchId, joueurId])
+}

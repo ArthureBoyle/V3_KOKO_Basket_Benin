@@ -16,6 +16,7 @@ import express from "express";
 import helmet from "helmet";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import prisma from "./utils/prisma";
 
 const app = express();
 
@@ -34,8 +35,17 @@ app.use(cookieParser());
 // Volontairement hors de la convention reponseSucces/reponseErreur :
 // un healthcheck externe (Docker, monitoring) attend une forme simple
 // et stable, pas l'enveloppe success/data de l'API metier.
-app.get("/health", (req, res) => {
-  res.status(200).json({ status: "ok" });
+//
+// Verifie maintenant reellement la base (le client Prisma existe depuis
+// que le schema est ecrit et migre) — avant, /health mentait un peu en
+// repondant "ok" sans jamais interroger quoi que ce soit.
+app.get("/health", async (req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.status(200).json({ status: "ok", database: "connected" });
+  } catch (error) {
+    res.status(503).json({ status: "degraded", database: "unreachable" });
+  }
 });
 
 const PORT = process.env.PORT || 4000;
