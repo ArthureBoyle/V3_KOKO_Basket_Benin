@@ -6,22 +6,40 @@ import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcrypt";
 import prisma from "../utils/prisma";
 import { AuthRequest } from "../middlewares/verifierAuth";
-import { loginSchema } from "../utils/validation/authValidator";
+import { loginSchema, changerMotDePasseSchema } from "../utils/validation/authValidator";
 import { generateAccessToken, generateRefreshToken, hashToken } from "../utils/tokens";
 import { accessCookieOptions, refreshCookieOptions } from "../utils/cookies";
 import { reponseSucces, reponseErreur } from "../utils/reponses";
+
+// Hash bcrypt valide mais qui ne correspond a AUCUN vrai mot de passe —
+// sert uniquement a faire tourner bcrypt.compare meme quand l'email
+// n'existe pas, pour que le temps de reponse soit le meme dans les deux
+// cas (sinon : un email inexistant repond plus vite, aucun hash a
+// comparer — une fuite d'info par le temps, pas par le message).
+const HASH_FACTICE = "$2b$10$XweQG6166fV/MTAoSnINiewu.bG853mDvqpcxlp0R/8UlVu.y00Tm";
 
 export async function login(req: Request, res: Response, next: NextFunction) {
   try {
     const data = loginSchema.parse(req.body);
 
     const user = await prisma.user.findUnique({ where: { email: data.email } });
-    if (!user) return reponseErreur(res, "Identifiants invalides", 401);
+    if (!user) {
+      await bcrypt.compare(data.motDePasse, HASH_FACTICE);
+      return reponseErreur(res, "Identifiants invalides", 401);
+    }
 
-    if (!user.actif) return reponseErreur(res, "Ce compte a ete desactive", 403);
-
+    // Mot de passe verifie AVANT le statut actif, volontairement : sans
+    // preuve du bon mot de passe, personne ne doit savoir si ce compte
+    // precis existe, est actif, ou desactive — toujours le meme 401
+    // generique. Le message "compte desactive" n'est revele qu'a
+    // quelqu'un ayant deja prouve connaitre le bon mot de passe (donc le
+    // proprietaire legitime, ou quelqu'un qui a deja le mot de passe par
+    // un autre moyen — dans les deux cas, l'information n'est plus une
+    // fuite a ce stade).
     const motDePasseValide = await bcrypt.compare(data.motDePasse, user.motDePasse);
     if (!motDePasseValide) return reponseErreur(res, "Identifiants invalides", 401);
+
+    if (!user.actif) return reponseErreur(res, "Ce compte a ete desactive", 403);
 
     const accessToken = generateAccessToken(user.id, user.role);
     const refreshToken = await generateRefreshToken(user.id);
@@ -78,6 +96,30 @@ export async function logout(req: Request, res: Response, next: NextFunction) {
     res.clearCookie("accessToken", accessCookieOptions);
     res.clearCookie("refreshToken", refreshCookieOptions);
     return reponseSucces(res, { message: "Deconnexion reussie" });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /auth/changer-mot-de-passe — chacun change le SIEN, jamais celui
+// d'un autre compte. Partagee entre tous les roles, pas ADMIN seulement.
+export async function changerMotDePasse(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const data = changerMotDePasseSchema.parse(req.body);
+
+    const user = await prisma.user.findUnique({ where: { id: req.user!.userId } });
+    if (!user) return reponseErreur(res, "Compte introuvable", 404);
+
+    const ancienValide = await bcrypt.compare(data.ancienMotDePasse, user.motDePasse);
+    if (!ancienValide) return reponseErreur(res, "Ancien mot de passe incorrect", 401);
+
+    const nouveauHash = await bcrypt.hash(data.nouveauMotDePasse, 10);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { motDePasse: nouveauHash, mustChangePassword: false },
+    });
+
+    return reponseSucces(res, { message: "Mot de passe change" });
   } catch (err) {
     next(err);
   }

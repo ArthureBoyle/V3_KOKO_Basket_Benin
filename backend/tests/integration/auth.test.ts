@@ -12,18 +12,11 @@ import crypto from "crypto";
 import app from "../../src/app";
 import prisma from "../../src/utils/prisma";
 import { hashToken } from "../../src/utils/tokens";
+import { cookieValue } from "../helpers";
 
 const EMAIL_ACTIF = "test9001@koko.bj";
 const EMAIL_DESACTIVE = "test9002@koko.bj";
 const MOT_DE_PASSE = "TestSuite123!";
-
-// Extrait juste "nom=valeur" d'une ligne Set-Cookie complete (qui contient
-// aussi Path/Max-Age/Secure/... apres le premier ";").
-function cookieValue(setCookie: string[], nom: string): string {
-  const ligne = setCookie.find((c) => c.startsWith(`${nom}=`));
-  if (!ligne) throw new Error(`Cookie ${nom} introuvable dans la reponse`);
-  return ligne.split(";")[0];
-}
 
 describe("Auth", () => {
   let userActifId: number;
@@ -101,6 +94,14 @@ describe("Auth", () => {
         .post("/auth/login")
         .send({ email: EMAIL_DESACTIVE, motDePasse: MOT_DE_PASSE });
       expect(res.status).toBe(403);
+    });
+
+    it("email inexistant -> 401, meme message que mauvais mot de passe", async () => {
+      const res = await request(app)
+        .post("/auth/login")
+        .send({ email: "personne@koko.bj", motDePasse: "PeuImporte123!" });
+      expect(res.status).toBe(401);
+      expect(res.body.error).toBe("Identifiants invalides");
     });
   });
 
@@ -190,6 +191,36 @@ describe("Auth", () => {
         where: { token: hashToken(refreshBrut) },
       });
       expect(enBase?.revoked).toBe(true);
+    });
+  });
+
+  // Placee en dernier expres : elle change reellement le mot de passe du
+  // compte partage par les tests precedents. La verifier NE PASSE PAS par
+  // un nouveau /auth/login (5eme tentative, sous la limite de 5, mais
+  // verifier le NOUVEAU mot de passe en aurait demande une 6e -> 429).
+  // On verifie directement en base avec bcrypt.compare a la place.
+  describe("POST /auth/changer-mot-de-passe", () => {
+    it("mauvais ancien mot de passe -> 401", async () => {
+      const res = await request(app)
+        .post("/auth/changer-mot-de-passe")
+        .set("Cookie", cookieValue(cookiesValides, "accessToken"))
+        .send({ ancienMotDePasse: "FauxAncien!", nouveauMotDePasse: "NouveauMdp123!" });
+      expect(res.status).toBe(401);
+    });
+
+    it("bon ancien mot de passe -> 200, hash mis a jour, mustChangePassword passe a false", async () => {
+      const res = await request(app)
+        .post("/auth/changer-mot-de-passe")
+        .set("Cookie", cookieValue(cookiesValides, "accessToken"))
+        .send({ ancienMotDePasse: MOT_DE_PASSE, nouveauMotDePasse: "NouveauMdp123!" });
+      expect(res.status).toBe(200);
+
+      const enBase = await prisma.user.findUnique({ where: { id: userActifId } });
+      expect(enBase?.mustChangePassword).toBe(false);
+      const nouveauValide = await bcrypt.compare("NouveauMdp123!", enBase!.motDePasse);
+      expect(nouveauValide).toBe(true);
+      const ancienEncoreValide = await bcrypt.compare(MOT_DE_PASSE, enBase!.motDePasse);
+      expect(ancienEncoreValide).toBe(false);
     });
   });
 });

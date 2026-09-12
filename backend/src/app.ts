@@ -14,6 +14,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import prisma from "./utils/prisma";
 import authRoutes from "./routes/authRoutes";
+import comptesRoutes from "./routes/comptesRoutes";
 import { errorHandler } from "./middlewares/errorHandler";
 
 const app = express();
@@ -38,6 +39,7 @@ app.get("/health", async (req, res) => {
 });
 
 app.use("/auth", authRoutes);
+app.use("/comptes", comptesRoutes);
 
 // errorHandler doit etre le DERNIER app.use() du fichier, apres toutes
 // les routes — sinon les erreurs des routes montees apres lui ne
