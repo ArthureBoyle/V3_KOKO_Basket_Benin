@@ -95,6 +95,9 @@ model Joueur {
   prenom        String    @db.VarChar(100)
   surnom        String?   @db.VarChar(50)
   dateNaissance DateTime? @db.Date
+  // Chemin relatif vers le fichier sur disque (ex: "joueurs/uuid.jpg"),
+  // jamais le fichier lui-meme. Voir utils/uploadImage.ts.
+  avatar        String?   @db.VarChar(255)
   userId        Int       @unique
   createdAt     DateTime  @default(now())
 

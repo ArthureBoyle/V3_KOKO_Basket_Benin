@@ -9,13 +9,14 @@ import { AuthRequest } from "../middlewares/verifierAuth";
 import { reponseSucces, reponseErreur } from "../utils/reponses";
 import { calculerStatutTournoi } from "../utils/tournoiStatut";
 import { calculerStatutMatch } from "../utils/matchStatut";
+import { traiterEtEnregistrerImage, supprimerAncienneImage } from "../utils/uploadImage";
 
 // GET /joueurs/moi — profil complet du joueur connecte.
 export async function getMonProfil(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const joueur = await prisma.joueur.findUnique({
       where: { userId: req.user!.userId },
-      select: { id: true, idKoko: true, nomLegal: true, prenom: true, surnom: true, dateNaissance: true },
+      select: { id: true, idKoko: true, nomLegal: true, prenom: true, surnom: true, dateNaissance: true, avatar: true },
     });
     if (!joueur) return reponseErreur(res, "Profil joueur introuvable", 404);
 
@@ -111,6 +112,35 @@ export async function getMesMatchs(req: AuthRequest, res: Response, next: NextFu
 
     const enrichis = matches.map((match) => ({ ...match, statut: calculerStatutMatch(match) }));
     return reponseSucces(res, enrichis);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// PUT /joueurs/moi/avatar — remplace son propre avatar. Le fichier
+// arrive deja en memoire (req.file.buffer) via uploadMiddleware, verifie
+// et re-encode par traiterEtEnregistrerImage avant d'etre ecrit sur
+// disque -- voir utils/uploadImage.ts.
+export async function uploaderAvatar(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    if (!req.file) {
+      return reponseErreur(res, "Aucun fichier envoye", 400);
+    }
+
+    const joueur = await prisma.joueur.findUnique({ where: { userId: req.user!.userId } });
+    if (!joueur) return reponseErreur(res, "Profil joueur introuvable", 404);
+
+    const cheminRelatif = await traiterEtEnregistrerImage(req.file.buffer, "joueurs");
+
+    await supprimerAncienneImage(joueur.avatar);
+
+    const misAJour = await prisma.joueur.update({
+      where: { id: joueur.id },
+      data: { avatar: cheminRelatif },
+      select: { id: true, avatar: true },
+    });
+
+    return reponseSucces(res, misAJour);
   } catch (err) {
     next(err);
   }

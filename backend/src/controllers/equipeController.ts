@@ -12,6 +12,7 @@ import {
 import { reponseSucces, reponseErreur } from "../utils/reponses";
 import { estTournoiModifiable } from "../utils/tournoiStatut";
 import { verifierAccesTournoi } from "../utils/accesTournoi";
+import { traiterEtEnregistrerImage, supprimerAncienneImage } from "../utils/uploadImage";
 
 // POST /equipes — ORGANISATEUR proprietaire (ou ADMIN), dans la limite
 // de equipesMax fixee par l'ADMIN pour ce tournoi.
@@ -219,6 +220,39 @@ export async function supprimerEquipe(req: AuthRequest, res: Response, next: Nex
 
     await prisma.equipe.delete({ where: { id } });
     return reponseSucces(res, { message: "Equipe supprimee" });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// PUT /equipes/:id/logo — ADMIN ou organisateur proprietaire. Meme
+// traitement securite que l'avatar joueur (voir uploadImage.ts).
+export async function uploaderLogo(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    if (!req.file) {
+      return reponseErreur(res, "Aucun fichier envoye", 400);
+    }
+
+    const id = parseInt(String(req.params.id), 10);
+    const equipe = await prisma.equipe.findUnique({ where: { id } });
+    if (!equipe) return reponseErreur(res, "Equipe introuvable", 404);
+
+    const acces = await verifierAccesTournoi(equipe.tournoiId, req.user!);
+    if (!acces.ok) return reponseErreur(res, "Equipe introuvable", acces.status);
+    if (!acces.estAdmin && !estTournoiModifiable(acces.statutCalcule)) {
+      return reponseErreur(res, "Ce tournoi est termine, aucune modification possible", 403);
+    }
+
+    const cheminRelatif = await traiterEtEnregistrerImage(req.file.buffer, "equipes");
+
+    await supprimerAncienneImage(equipe.logo);
+
+    const misAJour = await prisma.equipe.update({
+      where: { id },
+      data: { logo: cheminRelatif },
+    });
+
+    return reponseSucces(res, misAJour);
   } catch (err) {
     next(err);
   }

@@ -1,5 +1,9 @@
 # Documentation de repère perso — pas versionnée, jamais poussée sur GitHub
-docs/
+# Ancre a la racine du repo (/docs/) expres : sans le "/" de tete, ce
+# motif matchait N'IMPORTE QUEL dossier "docs" a toute profondeur, y
+# compris backend/src/docs/ (notre doc Swagger reelle) -- silencieusement
+# jamais commit sans qu'on s'en rende compte.
+/docs/
 
 # Notes d'apprentissage personnelles — jamais versionnées
 notes-apprentissage/
@@ -13,6 +17,10 @@ backend/dist/
 # Secrets — jamais commités, ni maintenant ni plus tard
 .env
 backend/.env
+
+# Fichiers uploadés par les utilisateurs — jamais versionnés
+backend/uploads/*
+!backend/uploads/**/.gitkeep
 
 # Artefacts Windows/WSL (flux de données alternatifs sur fichiers copiés)
 *:Zone.Identifier

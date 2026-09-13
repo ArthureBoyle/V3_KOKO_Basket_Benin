@@ -8,10 +8,13 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+import path from "path";
 import express from "express";
 import helmet from "helmet";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import swaggerUi from "swagger-ui-express";
+import { openapiDocument } from "./docs/openapi";
 import prisma from "./utils/prisma";
 import authRoutes from "./routes/authRoutes";
 import comptesRoutes from "./routes/comptesRoutes";
@@ -32,6 +35,31 @@ app.use(
 );
 app.use(express.json());
 app.use(cookieParser());
+
+// Sert les images uploadees (avatars/logos) telles quelles. Le
+// Cross-Origin-Resource-Policy par defaut de helmet ("same-origin")
+// bloquerait sinon le frontend (autre origine) de les charger via <img>.
+app.use(
+  "/uploads",
+  express.static(path.join(__dirname, "../uploads"), {
+    setHeaders: (res) => res.setHeader("Cross-Origin-Resource-Policy", "cross-origin"),
+  })
+);
+
+// Doc interactive. On retire le Content-Security-Policy pose par
+// helmet() plus haut UNIQUEMENT sur ce chemin : swagger-ui-express sert
+// une page avec un <script> inline pour s'initialiser, que le CSP par
+// defaut de helmet bloquerait sinon.
+app.use(
+  "/docs",
+  (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    res.removeHeader("Content-Security-Policy");
+    next();
+  },
+  swaggerUi.serve,
+  swaggerUi.setup(openapiDocument)
+);
+app.get("/docs.json", (req, res) => res.json(openapiDocument));
 
 app.get("/health", async (req, res) => {
   try {
