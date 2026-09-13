@@ -1,0 +1,11 @@
+-- CreateEnum
+CREATE TYPE "AlgorithmeClassement" AS ENUM ('POINTS_BRUTS', 'POINTS_PONDERES', 'POINTS_PONDERES_FAUTES', 'POINTS_PONDERES_FAUTES_CONTRES');
+
+-- AlterTable
+ALTER TABLE "Stat" ADD COLUMN     "contres" INTEGER NOT NULL DEFAULT 0;
+
+-- AlterTable
+ALTER TABLE "Tournoi" ADD COLUMN     "algorithmeClassement" "AlgorithmeClassement" NOT NULL DEFAULT 'POINTS_PONDERES_FAUTES',
+ADD COLUMN     "coefficientBoostContres" DOUBLE PRECISION NOT NULL DEFAULT 0.6,
+ADD COLUMN     "coefficientLissage" INTEGER NOT NULL DEFAULT 3,
+ADD COLUMN     "coefficientMalusFautes" DOUBLE PRECISION NOT NULL DEFAULT 0.6;

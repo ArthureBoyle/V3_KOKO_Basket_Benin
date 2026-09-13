@@ -15,6 +15,10 @@ import cookieParser from "cookie-parser";
 import prisma from "./utils/prisma";
 import authRoutes from "./routes/authRoutes";
 import comptesRoutes from "./routes/comptesRoutes";
+import tournoisRoutes from "./routes/tournoisRoutes";
+import equipesRoutes from "./routes/equipesRoutes";
+import matchsRoutes from "./routes/matchsRoutes";
+import joueursRoutes from "./routes/joueursRoutes";
 import { errorHandler } from "./middlewares/errorHandler";
 
 const app = express();
@@ -40,6 +44,10 @@ app.get("/health", async (req, res) => {
 
 app.use("/auth", authRoutes);
 app.use("/comptes", comptesRoutes);
+app.use("/tournois", tournoisRoutes);
+app.use("/equipes", equipesRoutes);
+app.use("/matchs", matchsRoutes);
+app.use("/joueurs", joueursRoutes);
 
 // errorHandler doit etre le DERNIER app.use() du fichier, apres toutes
 // les routes — sinon les erreurs des routes montees apres lui ne

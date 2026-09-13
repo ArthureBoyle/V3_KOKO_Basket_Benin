@@ -23,11 +23,15 @@ enum StatutTournoi {
   A_VENIR
   ACTIF
   TERMINE
+  ANNULE
 }
 
+// Pas de EN_COURS : aurait demande un champ duree sur Match pour savoir
+// quand un match "en cours" se termine. EN_RETARD ne coute rien (juste
+// une comparaison de date), TERMINE est pilote par la saisie du score
+// (pas par l'horloge) — voir matchStatut.ts.
 enum StatutMatch {
   A_VENIR
-  EN_COURS
   EN_RETARD
   REPORTE
   TERMINE
@@ -38,6 +42,19 @@ enum StatutCertification {
   EN_ATTENTE
   CERTIFIE
   SUSPENDU
+}
+
+// Progression de niveaux d'un MEME calcul (moyenne bayesienne), pas 4
+// algorithmes independants : chaque niveau ajoute un terme au precedent.
+// POINTS_PONDERES_FAUTES_CONTRES est le plus complet, POINTS_BRUTS le
+// plus simple (compatible avec un organisateur qui ne saisit aucune
+// stat detaillee — seul le classement equipes, base sur les scores de
+// match, fonctionne alors reellement).
+enum AlgorithmeClassement {
+  POINTS_BRUTS
+  POINTS_PONDERES
+  POINTS_PONDERES_FAUTES
+  POINTS_PONDERES_FAUTES_CONTRES
 }
 
 model User {
@@ -81,9 +98,10 @@ model Joueur {
   userId        Int       @unique
   createdAt     DateTime  @default(now())
 
-  user    User           @relation(fields: [userId], references: [id])
-  equipes EquipeJoueur[]
-  stats   Stat[]
+  user     User            @relation(fields: [userId], references: [id])
+  equipes  EquipeJoueur[]
+  stats    Stat[]
+  tournois TournoiJoueur[]
 }
 
 model Tournoi {
@@ -95,11 +113,38 @@ model Tournoi {
   dateFin        DateTime      @db.Date
   statut         StatutTournoi @default(A_VENIR)
   organisateurId Int
+  // Licences payees et nombre d'equipes autorises — fixes par l'ADMIN a
+  // la creation, mais modifiables ensuite par lui seul (meme porte que
+  // les dates) si l'organisateur negocie une extension hors app.
+  licencesMax    Int
+  equipesMax     Int
+  // Reglages du classement joueurs — reserves a l'ADMIN (meme porte que
+  // licencesMax/equipesMax), modifiables apres coup. Voir utils/classement.ts.
+  algorithmeClassement    AlgorithmeClassement @default(POINTS_PONDERES_FAUTES)
+  coefficientLissage      Int                  @default(3)   // k
+  coefficientMalusFautes  Float                @default(0.6) // c
+  coefficientBoostContres Float                @default(0.6) // b
   createdAt      DateTime      @default(now())
 
-  organisateur User     @relation(fields: [organisateurId], references: [id])
-  equipes      Equipe[]
-  matchs       Match[]
+  organisateur     User             @relation(fields: [organisateurId], references: [id])
+  equipes          Equipe[]
+  matchs           Match[]
+  joueursAssignes  TournoiJoueur[]
+}
+
+// Le "pool" de joueurs que l'ADMIN assigne a un tournoi (licences
+// accordees). L'organisateur ne choisit JAMAIS un joueur en dehors de ce
+// pool — il n'a donc jamais besoin de chercher/deviner un idKoko.
+model TournoiJoueur {
+  id        Int      @id @default(autoincrement())
+  tournoiId Int
+  joueurId  Int
+  assigneLe DateTime @default(now())
+
+  tournoi Tournoi @relation(fields: [tournoiId], references: [id])
+  joueur  Joueur  @relation(fields: [joueurId], references: [id])
+
+  @@unique([tournoiId, joueurId])
 }
 
 model Equipe {
@@ -121,6 +166,11 @@ model Equipe {
 model EquipeJoueur {
   id              Int                 @id @default(autoincrement())
   equipeId        Int
+  // Denormalise depuis equipe.tournoiId au moment de la creation — sert
+  // UNIQUEMENT a poser la contrainte d'unicite ci-dessous en base (un
+  // joueur ne peut appartenir qu'a UNE SEULE equipe par tournoi, jamais
+  // deux en meme temps, meme en cas de requetes concurrentes).
+  tournoiId       Int
   joueurId        Int
   numeroDeMaillot Int
   statut          StatutCertification @default(EN_ATTENTE)
@@ -128,7 +178,7 @@ model EquipeJoueur {
   equipe Equipe @relation(fields: [equipeId], references: [id])
   joueur Joueur @relation(fields: [joueurId], references: [id])
 
-  @@unique([equipeId, joueurId])
+  @@unique([tournoiId, joueurId])
   @@unique([equipeId, numeroDeMaillot])
 }
 
@@ -144,6 +194,11 @@ model Match {
   statut        StatutMatch @default(A_VENIR)
   score1        Int?
   score2        Int?
+  // Nombre de fois ou l'ORGANISATEUR a CORRIGE le score apres la saisie
+  // initiale (la saisie initiale elle-meme ne compte pas). Plafonne a 2
+  // cote controller (1 saisie + 2 corrections = 3 au total) ; l'ADMIN
+  // n'est jamais soumis a cette limite et ne l'incremente pas.
+  nombreCorrectionsScore Int @default(0)
   arbitre       String?     @db.VarChar(100)
 
   tournoi Tournoi @relation(fields: [tournoiId], references: [id])
@@ -161,7 +216,12 @@ model Stat {
   equipeId Int
   points   Int @default(0)
   fautes   Int @default(0)
+  contres  Int @default(0)
   tempsJeu Int @default(0)
+  // Meme principe anti-abus que Match.nombreCorrectionsScore : 1 saisie
+  // + 2 corrections max pour l'ORGANISATEUR, illimite pour l'ADMIN — les
+  // stats alimentent le classement, meme enjeu que le score du match.
+  nombreCorrections Int @default(0)
 
   match  Match  @relation(fields: [matchId], references: [id])
   joueur Joueur @relation(fields: [joueurId], references: [id])
