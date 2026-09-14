@@ -61,6 +61,9 @@ model User {
   emailReel          String?         @db.VarChar(254)
   nom                String          @db.VarChar(100)
   prenom             String          @db.VarChar(100)
+  // Hash bcrypt du code secret ADMIN (null pour tous les autres roles).
+  // Defini UNIQUEMENT par scripts/definir-code-admin.ts, jamais par HTTP.
+  codeSecretAdmin    String?         @db.VarChar(60)
   createdAt          DateTime        @default(now())
 
   joueur        Joueur?

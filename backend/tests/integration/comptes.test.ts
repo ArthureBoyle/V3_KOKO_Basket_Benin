@@ -10,17 +10,25 @@ import { cookieValue } from "../helpers";
 
 const EMAIL_ADMIN = "test9101@koko.bj";
 const EMAIL_ORGA = "test9102@koko.bj";
+const EMAIL_ADMIN_SANS_CODE = "test9103@koko.bj";
+const EMAIL_ADMIN_BRUTE = "test9104@koko.bj";
 const MOT_DE_PASSE = "TestSuite123!";
+const CODE_ADMIN = "Code-Secret-Admin-2026";
 
 describe("Comptes", () => {
   let adminId: number;
+  let adminSansCodeId: number;
+  let adminBruteId: number;
   let orgaId: number;
   let cookiesAdmin: string[];
+  let cookiesAdminSansCode: string[];
+  let cookiesAdminBrute: string[];
   let cookiesOrga: string[];
   const idsComptesCrees: number[] = [];
 
   beforeAll(async () => {
     const hash = await bcrypt.hash(MOT_DE_PASSE, 10);
+    const hashCode = await bcrypt.hash(CODE_ADMIN, 10);
 
     const admin = await prisma.user.create({
       data: {
@@ -31,9 +39,38 @@ describe("Comptes", () => {
         mustChangePassword: false,
         nom: "Suite",
         prenom: "Admin",
+        codeSecretAdmin: hashCode,
       },
     });
     adminId = admin.id;
+
+    // Admin qui n'a jamais lance le script : codeSecretAdmin reste null.
+    const adminSansCode = await prisma.user.create({
+      data: {
+        email: EMAIL_ADMIN_SANS_CODE,
+        motDePasse: hash,
+        role: "ADMIN",
+        mustChangePassword: false,
+        nom: "Suite",
+        prenom: "AdminSansCode",
+      },
+    });
+    adminSansCodeId = adminSansCode.id;
+
+    // Admin dedie au test de brute force : le limiteur est cle sur le
+    // compte, on ne bloque donc pas l'admin principal pour la suite.
+    const adminBrute = await prisma.user.create({
+      data: {
+        email: EMAIL_ADMIN_BRUTE,
+        motDePasse: hash,
+        role: "ADMIN",
+        mustChangePassword: false,
+        nom: "Suite",
+        prenom: "AdminBrute",
+        codeSecretAdmin: hashCode,
+      },
+    });
+    adminBruteId = adminBrute.id;
 
     const orga = await prisma.user.create({
       data: {
@@ -53,6 +90,16 @@ describe("Comptes", () => {
       .send({ email: EMAIL_ADMIN, motDePasse: MOT_DE_PASSE });
     cookiesAdmin = loginAdmin.headers["set-cookie"] as unknown as string[];
 
+    const loginSansCode = await request(app)
+      .post("/auth/login")
+      .send({ email: EMAIL_ADMIN_SANS_CODE, motDePasse: MOT_DE_PASSE });
+    cookiesAdminSansCode = loginSansCode.headers["set-cookie"] as unknown as string[];
+
+    const loginBrute = await request(app)
+      .post("/auth/login")
+      .send({ email: EMAIL_ADMIN_BRUTE, motDePasse: MOT_DE_PASSE });
+    cookiesAdminBrute = loginBrute.headers["set-cookie"] as unknown as string[];
+
     const loginOrga = await request(app)
       .post("/auth/login")
       .send({ email: EMAIL_ORGA, motDePasse: MOT_DE_PASSE });
@@ -61,11 +108,11 @@ describe("Comptes", () => {
 
   afterAll(async () => {
     await prisma.refreshToken.deleteMany({
-      where: { userId: { in: [adminId, orgaId, ...idsComptesCrees] } },
+      where: { userId: { in: [adminId, adminSansCodeId, adminBruteId, orgaId, ...idsComptesCrees] } },
     });
     await prisma.joueur.deleteMany({ where: { userId: { in: idsComptesCrees } } });
     await prisma.user.deleteMany({
-      where: { id: { in: [adminId, orgaId, ...idsComptesCrees] } },
+      where: { id: { in: [adminId, adminSansCodeId, adminBruteId, orgaId, ...idsComptesCrees] } },
     });
     await prisma.$disconnect();
   });
@@ -137,11 +184,86 @@ describe("Comptes", () => {
     });
   });
 
-  describe("PUT /comptes/:id/desactiver et /reactiver", () => {
-    it("desactive : actif passe a false, login refuse ensuite (403)", async () => {
+  describe("PUT /comptes/:id/desactiver — code secret admin", () => {
+    it("sans codeAdmin -> 403, compte toujours actif", async () => {
       const res = await request(app)
         .put(`/comptes/${orgaId}/desactiver`)
         .set("Cookie", cookieValue(cookiesAdmin, "accessToken"));
+      expect(res.status).toBe(403);
+
+      const enBase = await prisma.user.findUnique({ where: { id: orgaId } });
+      expect(enBase?.actif).toBe(true);
+    });
+
+    it("mauvais codeAdmin -> 403, compte toujours actif", async () => {
+      const res = await request(app)
+        .put(`/comptes/${orgaId}/desactiver`)
+        .set("Cookie", cookieValue(cookiesAdmin, "accessToken"))
+        .send({ codeAdmin: "PasLeBonCode999" });
+      expect(res.status).toBe(403);
+      expect(res.body.error).toBe("Code admin invalide");
+
+      const enBase = await prisma.user.findUnique({ where: { id: orgaId } });
+      expect(enBase?.actif).toBe(true);
+    });
+
+    it("admin SANS code defini -> 403 meme avec un code quelconque", async () => {
+      const res = await request(app)
+        .put(`/comptes/${orgaId}/desactiver`)
+        .set("Cookie", cookieValue(cookiesAdminSansCode, "accessToken"))
+        .send({ codeAdmin: CODE_ADMIN });
+      expect(res.status).toBe(403);
+
+      const enBase = await prisma.user.findUnique({ where: { id: orgaId } });
+      expect(enBase?.actif).toBe(true);
+    });
+
+    it("ORGANISATEUR avec un code -> 403 (le role est verifie avant le code)", async () => {
+      const res = await request(app)
+        .put(`/comptes/${orgaId}/desactiver`)
+        .set("Cookie", cookieValue(cookiesOrga, "accessToken"))
+        .send({ codeAdmin: CODE_ADMIN });
+      expect(res.status).toBe(403);
+      expect(res.body.error).toBe("Acces refuse");
+    });
+
+    it("5 echecs -> le 6e essai est bloque (429) meme avec le bon code", async () => {
+      for (let i = 0; i < 5; i++) {
+        const res = await request(app)
+          .put(`/comptes/${orgaId}/desactiver`)
+          .set("Cookie", cookieValue(cookiesAdminBrute, "accessToken"))
+          .send({ codeAdmin: `Mauvais-code-${i}` });
+        expect(res.status).toBe(403);
+      }
+      const bloque = await request(app)
+        .put(`/comptes/${orgaId}/desactiver`)
+        .set("Cookie", cookieValue(cookiesAdminBrute, "accessToken"))
+        .send({ codeAdmin: CODE_ADMIN });
+      expect(bloque.status).toBe(429);
+
+      const enBase = await prisma.user.findUnique({ where: { id: orgaId } });
+      expect(enBase?.actif).toBe(true);
+    });
+
+    it("le hash du code n'apparait jamais dans GET /comptes ni /auth/moi", async () => {
+      const comptes = await request(app)
+        .get("/comptes")
+        .set("Cookie", cookieValue(cookiesAdmin, "accessToken"));
+      const moi = await request(app)
+        .get("/auth/moi")
+        .set("Cookie", cookieValue(cookiesAdmin, "accessToken"));
+      expect(moi.status).toBe(200);
+      expect(JSON.stringify(comptes.body)).not.toContain("codeSecretAdmin");
+      expect(JSON.stringify(moi.body)).not.toContain("codeSecretAdmin");
+    });
+  });
+
+  describe("PUT /comptes/:id/desactiver et /reactiver", () => {
+    it("desactive (bon code) : actif passe a false, login refuse ensuite (403)", async () => {
+      const res = await request(app)
+        .put(`/comptes/${orgaId}/desactiver`)
+        .set("Cookie", cookieValue(cookiesAdmin, "accessToken"))
+        .send({ codeAdmin: CODE_ADMIN });
       expect(res.status).toBe(200);
 
       const loginApresDesactivation = await request(app)
@@ -165,7 +287,8 @@ describe("Comptes", () => {
     it("impossible de desactiver le compte ADMIN lui-meme", async () => {
       const res = await request(app)
         .put(`/comptes/${adminId}/desactiver`)
-        .set("Cookie", cookieValue(cookiesAdmin, "accessToken"));
+        .set("Cookie", cookieValue(cookiesAdmin, "accessToken"))
+        .send({ codeAdmin: CODE_ADMIN });
       expect(res.status).toBe(403);
     });
   });

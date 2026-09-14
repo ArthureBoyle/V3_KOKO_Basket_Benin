@@ -7,7 +7,11 @@
 // ================================================
 import { z } from "zod";
 import { loginSchema, changerMotDePasseSchema } from "../utils/validation/authValidator";
-import { creerOrganisateurSchema, creerJoueurSchema } from "../utils/validation/compteValidator";
+import {
+  creerOrganisateurSchema,
+  creerJoueurSchema,
+  codeAdminSchema,
+} from "../utils/validation/compteValidator";
 import {
   creerTournoiSchema,
   modifierTournoiSchema,
@@ -208,9 +212,17 @@ export const openapiDocument = {
     "/comptes/{id}/desactiver": {
       put: {
         tags: ["Comptes"],
-        summary: "Desactive un compte (login refuse ensuite)",
+        summary: "Desactive un compte (login refuse ensuite) — exige le code secret admin",
+        description:
+          "Protege par le code secret ADMIN (body.codeAdmin), defini uniquement cote serveur via scripts/definir-code-admin.ts. Mauvais code ou code absent -> 403. 5 echecs / 15 min par compte -> 429.",
         parameters: [paramId("id", "id du compte User")],
-        responses: { "200": succes("Compte desactive"), "403": ref("AccesRefuse"), "404": ref("Introuvable") },
+        requestBody: corps(codeAdminSchema),
+        responses: {
+          "200": succes("Compte desactive"),
+          "403": ref("AccesRefuse"),
+          "404": ref("Introuvable"),
+          "429": ref("TropDeRequetes"),
+        },
       },
     },
     "/comptes/{id}/reactiver": {
