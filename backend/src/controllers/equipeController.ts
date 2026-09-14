@@ -7,7 +7,6 @@ import { AuthRequest } from "../middlewares/verifierAuth";
 import {
   creerEquipeSchema,
   ajouterJoueurSchema,
-  changerStatutJoueurSchema,
 } from "../utils/validation/equipeValidator";
 import { reponseSucces, reponseErreur } from "../utils/reponses";
 import { estTournoiModifiable } from "../utils/tournoiStatut";
@@ -169,28 +168,6 @@ export async function retirerJoueur(req: AuthRequest, res: Response, next: NextF
     }
 
     return reponseSucces(res, { message: "Joueur retire de l'equipe" });
-  } catch (err) {
-    next(err);
-  }
-}
-
-// PUT /equipes/:id/joueurs/:joueurId/statut — ADMIN seulement
-// (certification, sans lien avec le statut du tournoi).
-export async function changerStatutJoueur(req: AuthRequest, res: Response, next: NextFunction) {
-  try {
-    const equipeId = parseInt(String(req.params.id), 10);
-    const joueurId = parseInt(String(req.params.joueurId), 10);
-    const data = changerStatutJoueurSchema.parse(req.body);
-
-    const misAJour = await prisma.equipeJoueur.updateMany({
-      where: { equipeId, joueurId },
-      data: { statut: data.statut },
-    });
-    if (misAJour.count === 0) {
-      return reponseErreur(res, "Ce joueur n'appartient pas a cette equipe", 404);
-    }
-
-    return reponseSucces(res, { message: "Statut mis a jour" });
   } catch (err) {
     next(err);
   }

@@ -295,4 +295,65 @@ describe("Stats", () => {
       expect(res.status).toBe(404);
     });
   });
+
+  // Retirer un joueur du tournoi = fin de sa certification. Ses stats ne
+  // sont jamais supprimees, seulement masquees tant qu'il n'est plus
+  // certifie, et elles reviennent s'il est reajoute au pool.
+  describe("Retrait de joueur1 du tournoi (fin de certification)", () => {
+    it("ADMIN retire joueur1 -> 200, ses stats restent en base", async () => {
+      const res = await request(app)
+        .delete(`/tournois/${tournoi1Id}/joueurs/${joueur1Id}`)
+        .set("Cookie", cookieValue(cookiesAdmin, "accessToken"));
+      expect(res.status).toBe(200);
+
+      const statsEnBase = await prisma.stat.count({ where: { matchId: matchTermineId, joueurId: joueur1Id } });
+      expect(statsEnBase).toBe(1);
+    });
+
+    it("organisateur : ses stats sont masquees de la feuille de match", async () => {
+      const res = await request(app)
+        .get(`/matchs/${matchTermineId}/stats`)
+        .set("Cookie", cookieValue(cookiesOrga1, "accessToken"));
+      expect(res.status).toBe(200);
+      expect(res.body.data.some((s: any) => s.joueurId === joueur1Id)).toBe(false);
+    });
+
+    it("ADMIN : ses stats restent visibles, marquees retireDuTournoi", async () => {
+      const res = await request(app)
+        .get(`/matchs/${matchTermineId}/stats`)
+        .set("Cookie", cookieValue(cookiesAdmin, "accessToken"));
+      expect(res.status).toBe(200);
+      const stat = res.body.data.find((s: any) => s.joueurId === joueur1Id);
+      expect(stat.retireDuTournoi).toBe(true);
+    });
+
+    it("classement : joueur1 n'apparait plus", async () => {
+      const res = await request(app)
+        .get(`/tournois/${tournoi1Id}/classement`)
+        .set("Cookie", cookieValue(cookiesOrga1, "accessToken"));
+      expect(res.status).toBe(200);
+      expect(res.body.data.some((j: any) => j.joueurId === joueur1Id)).toBe(false);
+    });
+
+    it("nouvelle stat pour joueur1 -> 404 (plus dans aucune equipe)", async () => {
+      const res = await request(app)
+        .put(`/matchs/${matchTermineId}/stats/${joueur1Id}`)
+        .set("Cookie", cookieValue(cookiesOrga1, "accessToken"))
+        .send({ equipeId: equipeAId, points: 10, fautes: 1, contres: 0, tempsJeu: 20 });
+      expect(res.status).toBe(404);
+    });
+
+    it("reajoute au pool -> ses anciennes stats reapparaissent au classement", async () => {
+      const ajout = await request(app)
+        .post(`/tournois/${tournoi1Id}/joueurs`)
+        .set("Cookie", cookieValue(cookiesAdmin, "accessToken"))
+        .send({ idKoko: "KOKO-2026-5111" });
+      expect(ajout.status).toBe(201);
+
+      const res = await request(app)
+        .get(`/tournois/${tournoi1Id}/classement`)
+        .set("Cookie", cookieValue(cookiesOrga1, "accessToken"));
+      expect(res.body.data.some((j: any) => j.joueurId === joueur1Id)).toBe(true);
+    });
+  });
 });

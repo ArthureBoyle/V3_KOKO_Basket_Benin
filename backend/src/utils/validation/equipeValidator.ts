@@ -18,10 +18,5 @@ export const ajouterJoueurSchema = z.object({
   numeroDeMaillot: z.number().int().min(0).max(99),
 });
 
-export const changerStatutJoueurSchema = z.object({
-  statut: z.enum(["EN_ATTENTE", "CERTIFIE", "SUSPENDU"]),
-});
-
 export type CreerEquipeInput = z.infer<typeof creerEquipeSchema>;
 export type AjouterJoueurInput = z.infer<typeof ajouterJoueurSchema>;
-export type ChangerStatutJoueurInput = z.infer<typeof changerStatutJoueurSchema>;

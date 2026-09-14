@@ -38,12 +38,6 @@ enum StatutMatch {
   ANNULE
 }
 
-enum StatutCertification {
-  EN_ATTENTE
-  CERTIFIE
-  SUSPENDU
-}
-
 // Progression de niveaux d'un MEME calcul (moyenne bayesienne), pas 4
 // algorithmes independants : chaque niveau ajoute un terme au precedent.
 // POINTS_PONDERES_FAUTES_CONTRES est le plus complet, POINTS_BRUTS le
@@ -176,7 +170,10 @@ model EquipeJoueur {
   tournoiId       Int
   joueurId        Int
   numeroDeMaillot Int
-  statut          StatutCertification @default(EN_ATTENTE)
+  // Pas de statut de certification ici : un joueur est CERTIFIE pour un
+  // tournoi tant qu'il est dans son pool (TournoiJoueur). L'ADMIN l'y
+  // ajoute quand tout est en regle (licence payee, age verifie) et l'en
+  // retire pour mettre fin a la certification.
 
   equipe Equipe @relation(fields: [equipeId], references: [id])
   joueur Joueur @relation(fields: [joueurId], references: [id])

@@ -16,7 +16,6 @@ import {
 import {
   creerEquipeSchema,
   ajouterJoueurSchema,
-  changerStatutJoueurSchema,
 } from "../utils/validation/equipeValidator";
 import {
   creerMatchSchema,
@@ -303,15 +302,15 @@ export const openapiDocument = {
     "/tournois/{id}/joueurs/{joueurId}": {
       delete: {
         tags: ["Tournois"],
-        summary: "Desassigne un joueur du pool (ADMIN seulement, refuse s'il est encore dans une equipe)",
+        summary: "Retire un joueur du tournoi = fin de sa certification (ADMIN seulement). Il sort du pool ET de son equipe ; ses stats restent en base mais sont masquees",
         parameters: [paramId("id", "id du tournoi"), paramId("joueurId", "id du joueur")],
-        responses: { "200": succes("Joueur desassigne"), "400": { description: "Encore dans une equipe" }, "403": ref("AccesRefuse"), "404": ref("Introuvable") },
+        responses: { "200": succes("Joueur retire, plus certifie"), "403": ref("AccesRefuse"), "404": ref("Introuvable") },
       },
     },
     "/tournois/{id}/classement": {
       get: {
         tags: ["Classement"],
-        summary: "Classement joueurs (ADMIN, organisateur proprietaire, ou JOUEUR du pool). Filtrable par ?matchsJoues=",
+        summary: "Classement joueurs (ADMIN, organisateur proprietaire, ou JOUEUR du pool). Seuls les joueurs encore certifies sont classes. Filtrable par ?matchsJoues=",
         parameters: [paramId("id", "id du tournoi")],
         responses: { "200": succes("Classement joueurs, tries par score"), "404": ref("Introuvable") },
       },
@@ -372,15 +371,6 @@ export const openapiDocument = {
         summary: "Retire un joueur de l'equipe",
         parameters: [paramId("id", "id de l'equipe"), paramId("joueurId", "id du joueur")],
         responses: { "200": succes("Joueur retire"), "404": ref("Introuvable") },
-      },
-    },
-    "/equipes/{id}/joueurs/{joueurId}/statut": {
-      put: {
-        tags: ["Equipes"],
-        summary: "Change le statut de certification d'un joueur (ADMIN seulement)",
-        parameters: [paramId("id", "id de l'equipe"), paramId("joueurId", "id du joueur")],
-        requestBody: corps(changerStatutJoueurSchema),
-        responses: { "200": succes("Statut mis a jour"), "403": ref("AccesRefuse"), "404": ref("Introuvable") },
       },
     },
     "/equipes/{id}/logo": {
@@ -477,7 +467,7 @@ export const openapiDocument = {
     "/matchs/{id}/stats": {
       get: {
         tags: ["Stat"],
-        summary: "Stats detaillees de tous les joueurs pour ce match",
+        summary: "Stats detaillees du match. Joueurs retires du tournoi masques pour l'organisateur ; l'ADMIN les voit avec retireDuTournoi: true",
         parameters: [paramId("id", "id du match")],
         responses: { "200": succes("Liste des stats"), "404": ref("Introuvable") },
       },
@@ -512,10 +502,10 @@ export const openapiDocument = {
         responses: { "200": succes("Profil"), "404": ref("Introuvable") },
       },
     },
-    "/joueurs/moi/equipes": {
+    "/joueurs/moi/tournois": {
       get: {
         tags: ["Joueur"],
-        summary: "Equipes ou le joueur connecte est/a ete inscrit",
+        summary: "Tournois ou le joueur connecte est certifie (present dans le pool), avec son equipe ou null. Jamais les ANNULE",
         responses: { "200": succes("Liste") },
       },
     },

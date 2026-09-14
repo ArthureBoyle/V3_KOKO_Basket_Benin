@@ -329,4 +329,44 @@ describe("Tournois", () => {
       expect(mesTournois.body.data.some((t: any) => t.id === tournoiId)).toBe(true);
     });
   });
+
+  // Un tournoi fini peut etre prolonge par l'ADMIN (ex: report) : le
+  // statut n'etant jamais stocke, il redevient en cours tout seul, pour
+  // l'organisateur comme pour tout le monde.
+  describe("Prolongation d'un tournoi TERMINE par l'ADMIN", () => {
+    let tournoiFiniId: number;
+
+    it("tournoi aux dates passees -> TERMINE chez l'organisateur", async () => {
+      const creation = await request(app)
+        .post("/tournois")
+        .set("Cookie", cookieValue(cookiesAdmin, "accessToken"))
+        .send({
+          nom: "Tournoi Fini",
+          lieu: "Porto-Novo",
+          dateDebut: "2020-01-01",
+          dateFin: "2020-01-10",
+          organisateurId: orga2Id,
+          licencesMax: 10,
+          equipesMax: 4,
+        });
+      expect(creation.status).toBe(201);
+      tournoiFiniId = creation.body.data.id;
+      idsTournoisCrees.push(tournoiFiniId);
+
+      const mesTournois = await request(app).get("/tournois/mes-tournois").set("Cookie", cookieValue(cookiesOrga2, "accessToken"));
+      expect(mesTournois.body.data.find((t: any) => t.id === tournoiFiniId).statut).toBe("TERMINE");
+    });
+
+    it("ADMIN repousse la date de fin -> redevient ACTIF chez l'organisateur", async () => {
+      const res = await request(app)
+        .put(`/tournois/${tournoiFiniId}`)
+        .set("Cookie", cookieValue(cookiesAdmin, "accessToken"))
+        .send({ dateFin: "2099-12-31" });
+      expect(res.status).toBe(200);
+      expect(res.body.data.statut).toBe("ACTIF");
+
+      const mesTournois = await request(app).get("/tournois/mes-tournois").set("Cookie", cookieValue(cookiesOrga2, "accessToken"));
+      expect(mesTournois.body.data.find((t: any) => t.id === tournoiFiniId).statut).toBe("ACTIF");
+    });
+  });
 });

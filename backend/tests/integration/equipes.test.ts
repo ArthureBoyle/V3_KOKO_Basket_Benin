@@ -365,32 +365,6 @@ describe("Equipes + pool de licences", () => {
     });
   });
 
-  describe("PUT /equipes/:id/joueurs/:joueurId/statut", () => {
-    it("pas ADMIN -> 403", async () => {
-      const res = await request(app)
-        .put(`/equipes/${equipe1Id}/joueurs/${joueur1Id}/statut`)
-        .set("Cookie", cookieValue(cookiesOrga1, "accessToken"))
-        .send({ statut: "CERTIFIE" });
-      expect(res.status).toBe(403);
-    });
-
-    it("ADMIN -> 200", async () => {
-      const res = await request(app)
-        .put(`/equipes/${equipe1Id}/joueurs/${joueur1Id}/statut`)
-        .set("Cookie", cookieValue(cookiesAdmin, "accessToken"))
-        .send({ statut: "CERTIFIE" });
-      expect(res.status).toBe(200);
-    });
-
-    it("joueur inexistant dans l'equipe -> 404", async () => {
-      const res = await request(app)
-        .put(`/equipes/${equipe1Id}/joueurs/${joueur3Id}/statut`)
-        .set("Cookie", cookieValue(cookiesAdmin, "accessToken"))
-        .send({ statut: "CERTIFIE" });
-      expect(res.status).toBe(404);
-    });
-  });
-
   describe("DELETE /equipes/:id, equipe non vide", () => {
     it("-> 400, refuse tant qu'il reste des joueurs", async () => {
       const res = await request(app)
@@ -400,12 +374,31 @@ describe("Equipes + pool de licences", () => {
     });
   });
 
-  describe("DELETE /tournois/:id/joueurs/:joueurId (desassigner du pool)", () => {
-    it("joueur encore dans une equipe -> 400", async () => {
+  describe("DELETE /tournois/:id/joueurs/:joueurId (retrait du tournoi = fin de certification)", () => {
+    it("pas ADMIN -> 403", async () => {
+      const res = await request(app)
+        .delete(`/tournois/${tournoi1Id}/joueurs/${joueur1Id}`)
+        .set("Cookie", cookieValue(cookiesOrga1, "accessToken"));
+      expect(res.status).toBe(403);
+    });
+
+    it("joueur inconnu du pool -> 404", async () => {
+      const res = await request(app)
+        .delete(`/tournois/${tournoi1Id}/joueurs/${joueur3Id}`)
+        .set("Cookie", cookieValue(cookiesAdmin, "accessToken"));
+      expect(res.status).toBe(404);
+    });
+
+    it("joueur1, encore dans une equipe -> 200, retire du pool ET de son equipe en une fois", async () => {
       const res = await request(app)
         .delete(`/tournois/${tournoi1Id}/joueurs/${joueur1Id}`)
         .set("Cookie", cookieValue(cookiesAdmin, "accessToken"));
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(200);
+
+      const dansEquipe = await prisma.equipeJoueur.findFirst({ where: { tournoiId: tournoi1Id, joueurId: joueur1Id } });
+      const dansPool = await prisma.tournoiJoueur.findFirst({ where: { tournoiId: tournoi1Id, joueurId: joueur1Id } });
+      expect(dansEquipe).toBeNull();
+      expect(dansPool).toBeNull();
     });
   });
 
@@ -424,26 +417,10 @@ describe("Equipes + pool de licences", () => {
       expect(res.status).toBe(200);
     });
 
-    it("joueur1 -> 200", async () => {
+    it("joueur1, deja sorti de l'equipe avec le retrait du tournoi -> 404", async () => {
       const res = await request(app)
         .delete(`/equipes/${equipe1Id}/joueurs/${joueur1Id}`)
         .set("Cookie", cookieValue(cookiesOrga1, "accessToken"));
-      expect(res.status).toBe(200);
-    });
-  });
-
-  describe("DELETE /tournois/:id/joueurs/:joueurId, une fois l'equipe videe", () => {
-    it("joueur1 -> 200 desassigne", async () => {
-      const res = await request(app)
-        .delete(`/tournois/${tournoi1Id}/joueurs/${joueur1Id}`)
-        .set("Cookie", cookieValue(cookiesAdmin, "accessToken"));
-      expect(res.status).toBe(200);
-    });
-
-    it("joueur inconnu du pool -> 404", async () => {
-      const res = await request(app)
-        .delete(`/tournois/${tournoi1Id}/joueurs/${joueur3Id}`)
-        .set("Cookie", cookieValue(cookiesAdmin, "accessToken"));
       expect(res.status).toBe(404);
     });
   });

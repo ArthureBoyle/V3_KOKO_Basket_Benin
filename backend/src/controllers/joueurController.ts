@@ -26,39 +26,43 @@ export async function getMonProfil(req: AuthRequest, res: Response, next: NextFu
   }
 }
 
-// GET /joueurs/moi/equipes — toutes les equipes ou il est/a ete inscrit,
-// avec le tournoi associe (statut recalcule, jamais la valeur brute).
-export async function getMesEquipes(req: AuthRequest, res: Response, next: NextFunction) {
+// GET /joueurs/moi/tournois — les tournois ou le joueur est CERTIFIE.
+// Certifie = present dans le pool de licences du tournoi : l'ADMIN l'y a
+// ajoute (licence payee, identite et age verifies). Pas de statut
+// separe : le jour ou l'ADMIN le retire du pool, il n'est plus certifie
+// et le tournoi disparait de cette liste. Un tournoi ANNULE n'apparait
+// jamais (meme regle que pour l'organisateur) ; un TERMINE reste
+// (historique). L'equipe est null tant que l'organisateur ne l'a pas
+// encore place dans une equipe — il est deja certifie pour autant.
+export async function getMesTournois(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const joueur = await prisma.joueur.findUnique({ where: { userId: req.user!.userId } });
     if (!joueur) return reponseErreur(res, "Profil joueur introuvable", 404);
 
-    const inscriptions = await prisma.equipeJoueur.findMany({
-      where: { joueurId: joueur.id },
-      include: {
-        equipe: {
-          select: {
-            id: true,
-            nom: true,
-            couleur: true,
-            tournoi: { select: { id: true, nom: true, statut: true, dateDebut: true, dateFin: true } },
-          },
+    const [licences, inscriptions] = await Promise.all([
+      prisma.tournoiJoueur.findMany({
+        where: { joueurId: joueur.id },
+        include: {
+          tournoi: { select: { id: true, nom: true, lieu: true, statut: true, dateDebut: true, dateFin: true } },
         },
-      },
-    });
+      }),
+      prisma.equipeJoueur.findMany({
+        where: { joueurId: joueur.id },
+        include: { equipe: { select: { id: true, nom: true, couleur: true, logo: true } } },
+      }),
+    ]);
 
-    const resultat = inscriptions.map((inscription) => ({
-      equipeId: inscription.equipe.id,
-      nom: inscription.equipe.nom,
-      couleur: inscription.equipe.couleur,
-      numeroDeMaillot: inscription.numeroDeMaillot,
-      statutCertification: inscription.statut,
-      tournoi: {
-        id: inscription.equipe.tournoi.id,
-        nom: inscription.equipe.tournoi.nom,
-        statut: calculerStatutTournoi(inscription.equipe.tournoi),
-      },
-    }));
+    const inscriptionParTournoi = new Map(inscriptions.map((i) => [i.tournoiId, i]));
+
+    const resultat = licences
+      .map((licence) => {
+        const inscription = inscriptionParTournoi.get(licence.tournoiId);
+        return {
+          tournoi: { ...licence.tournoi, statut: calculerStatutTournoi(licence.tournoi) },
+          equipe: inscription ? { ...inscription.equipe, numeroDeMaillot: inscription.numeroDeMaillot } : null,
+        };
+      })
+      .filter((ligne) => ligne.tournoi.statut !== "ANNULE");
 
     return reponseSucces(res, resultat);
   } catch (err) {

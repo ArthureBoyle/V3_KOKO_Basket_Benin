@@ -292,34 +292,33 @@ export async function assignerJoueur(req: AuthRequest, res: Response, next: Next
   }
 }
 
-// DELETE /tournois/:id/joueurs/:joueurId — ADMIN seulement. Refuse tant
-// que le joueur est encore dans une equipe de ce tournoi : forcer un
-// retrait explicite de l'equipe d'abord evite un joueur "fantome"
-// (present dans une equipe mais plus dans le pool qui l'autorisait).
+// DELETE /tournois/:id/joueurs/:joueurId — ADMIN seulement. Retire la
+// certification du joueur pour ce tournoi : il sort du pool ET de son
+// equipe, en une seule transaction (jamais de joueur "fantome" present
+// dans une equipe sans licence). Ses stats deja saisies ne sont PAS
+// supprimees — l'historique des matchs reste integre, le score des
+// matchs n'est pas touche — elles sont seulement masquees du classement
+// et de la feuille de stats tant qu'il n'est plus certifie (voir
+// classementController / statController). S'il est reajoute au pool,
+// elles reapparaissent d'elles-memes.
 export async function desassignerJoueur(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const tournoiId = parseInt(String(req.params.id), 10);
     const joueurId = parseInt(String(req.params.joueurId), 10);
 
-    const dansUneEquipe = await prisma.equipeJoueur.findFirst({
-      where: { tournoiId, joueurId },
+    const licence = await prisma.tournoiJoueur.findUnique({
+      where: { tournoiId_joueurId: { tournoiId, joueurId } },
     });
-    if (dansUneEquipe) {
-      return reponseErreur(
-        res,
-        "Retirez d'abord ce joueur de son equipe avant de le desassigner du tournoi",
-        400
-      );
-    }
-
-    const suppression = await prisma.tournoiJoueur.deleteMany({
-      where: { tournoiId, joueurId },
-    });
-    if (suppression.count === 0) {
+    if (!licence) {
       return reponseErreur(res, "Joueur introuvable dans ce pool", 404);
     }
 
-    return reponseSucces(res, { message: "Joueur desassigne du tournoi" });
+    await prisma.$transaction([
+      prisma.equipeJoueur.deleteMany({ where: { tournoiId, joueurId } }),
+      prisma.tournoiJoueur.delete({ where: { id: licence.id } }),
+    ]);
+
+    return reponseSucces(res, { message: "Joueur retire du tournoi, il n'est plus certifie" });
   } catch (err) {
     next(err);
   }

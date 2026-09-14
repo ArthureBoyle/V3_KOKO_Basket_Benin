@@ -22,8 +22,18 @@ export async function getClassementJoueurs(req: AuthRequest, res: Response, next
     const acces = await verifierAccesLectureClassement(tournoiId, req.user!);
     if (!acces.ok) return reponseErreur(res, acces.message, acces.status);
 
-    const matches = await prisma.match.findMany({ where: { tournoiId } });
-    const stats = await prisma.stat.findMany({ where: { match: { tournoiId } } });
+    const [matches, statsBrutes, pool] = await Promise.all([
+      prisma.match.findMany({ where: { tournoiId } }),
+      prisma.stat.findMany({ where: { match: { tournoiId } } }),
+      prisma.tournoiJoueur.findMany({ where: { tournoiId }, select: { joueurId: true } }),
+    ]);
+
+    // Seuls les joueurs ENCORE certifies (presents dans le pool) sont
+    // classes. Les stats d'un joueur retire du tournoi restent en base,
+    // mais ne sont ni affichees ni prises dans la moyenne du tournoi qui
+    // sert au lissage bayesien.
+    const certifies = new Set(pool.map((p) => p.joueurId));
+    const stats = statsBrutes.filter((s) => certifies.has(s.joueurId));
 
     const joueurIds = Array.from(new Set(stats.map((s) => s.joueurId)));
     const joueurs = await prisma.joueur.findMany({

@@ -8,7 +8,6 @@ import {
   getEquipeById,
   ajouterJoueur,
   retirerJoueur,
-  changerStatutJoueur,
   supprimerEquipe,
   uploaderLogo,
 } from "../controllers/equipeController";
@@ -28,7 +27,6 @@ router.delete("/:id", verifierRole("ADMIN", "ORGANISATEUR"), supprimerEquipe);
 
 router.post("/:id/joueurs", verifierRole("ADMIN", "ORGANISATEUR"), ajouterJoueur);
 router.delete("/:id/joueurs/:joueurId", verifierRole("ADMIN", "ORGANISATEUR"), retirerJoueur);
-router.put("/:id/joueurs/:joueurId/statut", verifierRole("ADMIN"), changerStatutJoueur);
 
 router.put("/:id/logo", verifierRole("ADMIN", "ORGANISATEUR"), limiteurUpload, uploadMiddleware.single("logo"), uploaderLogo);
 

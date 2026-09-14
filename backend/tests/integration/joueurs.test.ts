@@ -130,19 +130,45 @@ describe("Routes joueur (/joueurs/moi)", () => {
     });
   });
 
-  describe("GET /joueurs/moi/equipes", () => {
-    it("joueur1 (place dans equipeA) -> 200, contient equipeA + son tournoi", async () => {
-      const res = await request(app).get("/joueurs/moi/equipes").set("Cookie", cookieValue(cookiesJ1, "accessToken"));
+  describe("GET /joueurs/moi/tournois (tournois ou il est certifie)", () => {
+    it("joueur1 (pool + equipeA) -> 200, son tournoi avec son equipe et son maillot", async () => {
+      const res = await request(app).get("/joueurs/moi/tournois").set("Cookie", cookieValue(cookiesJ1, "accessToken"));
       expect(res.status).toBe(200);
       expect(res.body.data).toHaveLength(1);
-      expect(res.body.data[0].equipeId).toBe(equipeAId);
       expect(res.body.data[0].tournoi.id).toBe(tournoi1Id);
+      expect(res.body.data[0].equipe.id).toBe(equipeAId);
+      expect(res.body.data[0].equipe.numeroDeMaillot).toBe(7);
     });
 
-    it("joueur3 (aucune equipe) -> 200, tableau vide", async () => {
-      const res = await request(app).get("/joueurs/moi/equipes").set("Cookie", cookieValue(cookiesJ3, "accessToken"));
+    it("joueur2 (pool, pas encore d'equipe) -> 200, certifie quand meme, equipe null", async () => {
+      const res = await request(app).get("/joueurs/moi/tournois").set("Cookie", cookieValue(cookiesJ2, "accessToken"));
+      expect(res.status).toBe(200);
+      expect(res.body.data).toHaveLength(1);
+      expect(res.body.data[0].tournoi.id).toBe(tournoi1Id);
+      expect(res.body.data[0].equipe).toBeNull();
+    });
+
+    it("joueur3 (hors pool) -> 200, tableau vide", async () => {
+      const res = await request(app).get("/joueurs/moi/tournois").set("Cookie", cookieValue(cookiesJ3, "accessToken"));
       expect(res.status).toBe(200);
       expect(res.body.data).toHaveLength(0);
+    });
+
+    it("un tournoi ANNULE n'apparait jamais, meme si le joueur est dans son pool", async () => {
+      const annule = await prisma.tournoi.create({
+        data: {
+          nom: "Tournoi Annule Joueur", lieu: "Cotonou",
+          dateDebut: new Date("2027-09-01"), dateFin: new Date("2027-09-10"),
+          organisateurId: orga1Id, licencesMax: 5, equipesMax: 5, statut: "ANNULE",
+        },
+      });
+      tournoiIds.push(annule.id);
+      await prisma.tournoiJoueur.create({ data: { tournoiId: annule.id, joueurId: joueur1Id } });
+
+      const res = await request(app).get("/joueurs/moi/tournois").set("Cookie", cookieValue(cookiesJ1, "accessToken"));
+      expect(res.status).toBe(200);
+      expect(res.body.data.some((ligne: any) => ligne.tournoi.id === annule.id)).toBe(false);
+      expect(res.body.data).toHaveLength(1);
     });
   });
 

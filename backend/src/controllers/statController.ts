@@ -87,6 +87,10 @@ export async function saisirStat(req: AuthRequest, res: Response, next: NextFunc
 }
 
 // GET /matchs/:id/stats — ADMIN ou proprietaire du tournoi parent.
+// Les stats d'un joueur retire du tournoi (plus certifie) sont masquees
+// pour l'organisateur. L'ADMIN les voit toujours, marquees
+// retireDuTournoi: true — elles expliquent un ecart eventuel entre la
+// somme des points affichee et le score officiel du match.
 export async function getStats(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const matchId = parseInt(String(req.params.id), 10);
@@ -96,14 +100,25 @@ export async function getStats(req: AuthRequest, res: Response, next: NextFuncti
     const acces = await verifierAccesTournoi(match.tournoiId, req.user!);
     if (!acces.ok) return reponseErreur(res, "Match introuvable", acces.status);
 
-    const stats = await prisma.stat.findMany({
-      where: { matchId },
-      include: {
-        joueur: { select: { id: true, idKoko: true, nomLegal: true, prenom: true } },
-      },
-    });
+    const [stats, pool] = await Promise.all([
+      prisma.stat.findMany({
+        where: { matchId },
+        include: {
+          joueur: { select: { id: true, idKoko: true, nomLegal: true, prenom: true } },
+        },
+      }),
+      prisma.tournoiJoueur.findMany({ where: { tournoiId: match.tournoiId }, select: { joueurId: true } }),
+    ]);
+    const certifies = new Set(pool.map((p) => p.joueurId));
 
-    return reponseSucces(res, stats);
+    if (acces.estAdmin) {
+      return reponseSucces(
+        res,
+        stats.map((s) => ({ ...s, retireDuTournoi: !certifies.has(s.joueurId) }))
+      );
+    }
+
+    return reponseSucces(res, stats.filter((s) => certifies.has(s.joueurId)));
   } catch (err) {
     next(err);
   }
