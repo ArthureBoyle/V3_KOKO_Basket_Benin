@@ -115,6 +115,96 @@
   }
 }
 
+/* ---- Ballon : couleur d'objet (cuir de basket), identique dans les 3
+   themes. Seule couleur hors tokens de theme : c'est une illustration, pas
+   un element d'interface. Definie une fois ici, jamais en dur dans le SVG. ---- */
+:root {
+  --ballon-clair: #f4a259;
+  --ballon: #d9642b;
+  --ballon-ombre: #8a3a12;
+  --ballon-couture: #2a1206;
+}
+
+/* ---- Micro-interactions (docs/KOKO_Design_Motion_System.pdf) :
+   transform et opacity uniquement, sauf le reflet du squelette. ---- */
+@keyframes koko-reflet {
+  0% {
+    background-position: -300px 0;
+  }
+  100% {
+    background-position: 500px 0;
+  }
+}
+
+@keyframes koko-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+}
+
+@keyframes koko-rotation {
+  to {
+    transform: rotate(720deg);
+  }
+}
+
+@keyframes koko-apparition {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes koko-glisse {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+
+@layer components {
+  /* Squelette : reflet sur background-position (pas du GPU pur, d'ou le
+     plafond de 10 lignes dans SqueletteLignes). */
+  .squelette {
+    background: linear-gradient(90deg, var(--elevated) 8%, var(--border) 18%, var(--elevated) 33%);
+    background-size: 800px 100%;
+    animation: koko-reflet 1.6s linear infinite;
+  }
+
+  .point-pulse {
+    animation: koko-pulse 1.6s cubic-bezier(0.2, 0.8, 0.3, 1) infinite;
+  }
+
+  /* Seules les coutures tournent : le degrade reste fixe, sinon le reflet
+     tournerait avec et l'illusion de volume se casserait. */
+  .ballon-coutures {
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  .ballon-rafraichit {
+    animation: koko-rotation 1.4s linear infinite;
+  }
+
+  .ballon-lent {
+    animation: koko-rotation 12s linear infinite;
+  }
+
+  .dialogue[open] {
+    animation: koko-apparition 0.3s cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+
+  .notification {
+    animation: koko-glisse 0.3s cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+}
+
 /* ---- Garde-fou obligatoire : un utilisateur qui a coupe les animations
    dans son systeme voit une interface statique. Ne couvre QUE le CSS :
    les animations JavaScript lisent useReducedMotion(). ---- */

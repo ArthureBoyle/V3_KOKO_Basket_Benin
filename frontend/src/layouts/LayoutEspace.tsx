@@ -1,9 +1,10 @@
 import { NavLink, Outlet } from 'react-router'
 import { Bouton } from '../components/ui/Bouton'
-import { ACCUEIL_PAR_ROLE, useDeconnexion, useSession } from '../features/auth/session'
+import { useDeconnexion, useSession } from '../features/auth/session'
 import { useTheme } from '../hooks/useTheme'
 import { estTheme, THEMES } from '../theme/theme'
 import type { Role } from '../types/api'
+import { NAVIGATION_PAR_ROLE } from './navigation'
 
 const LIBELLE_ESPACE: Record<Role, string> = {
   ADMIN: 'Administration',
@@ -13,8 +14,6 @@ const LIBELLE_ESPACE: Record<Role, string> = {
 
 // Mise en page commune aux trois espaces, desktop-first : sidebar a
 // gauche, en-tete (theme, identite, deconnexion), contenu a droite.
-// La navigation ne contient que "Accueil" : les sections arrivent avec
-// leurs ecrans.
 export function LayoutEspace() {
   const { data: session } = useSession()
   const deconnexion = useDeconnexion()
@@ -27,22 +26,23 @@ export function LayoutEspace() {
     <div className="flex min-h-screen">
       <aside className="flex w-60 shrink-0 flex-col border-r border-border bg-surface px-4 py-6">
         <p className="px-2 text-lg font-medium">KOKO</p>
-        <p className="px-2 text-2xs tracking-[0.08em] text-text-mute uppercase">
-          {LIBELLE_ESPACE[session.role]}
-        </p>
+        <p className="px-2 text-2xs tracking-[0.08em] text-text-mute uppercase">{LIBELLE_ESPACE[session.role]}</p>
 
         <nav className="mt-8 flex flex-col gap-1" aria-label="Navigation principale">
-          <NavLink
-            to={ACCUEIL_PAR_ROLE[session.role]}
-            end
-            className={({ isActive }) =>
-              `rounded-md px-2 py-1.5 text-sm transition-colors duration-150 ${
-                isActive ? 'bg-elevated text-primary-text' : 'text-text-mute hover:text-text'
-              }`
-            }
-          >
-            Accueil
-          </NavLink>
+          {NAVIGATION_PAR_ROLE[session.role].map((entree) => (
+            <NavLink
+              key={entree.chemin}
+              to={entree.chemin}
+              end
+              className={({ isActive }) =>
+                `rounded-md px-2 py-1.5 text-sm transition-colors duration-150 ${
+                  isActive ? 'bg-elevated text-primary-text' : 'text-text-mute hover:text-text'
+                }`
+              }
+            >
+              {entree.libelle}
+            </NavLink>
+          ))}
         </nav>
       </aside>
 

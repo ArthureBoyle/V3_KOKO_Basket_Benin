@@ -31,3 +31,8 @@ export interface Identifiants {
   email: string
   motDePasse: string
 }
+
+// Statuts RECALCULES par le backend a chaque lecture (jamais le statut
+// brut de la base) : c'est toujours ceux-la qu'on affiche.
+export type StatutTournoi = 'A_VENIR' | 'ACTIF' | 'TERMINE' | 'ANNULE'
+export type StatutMatch = 'A_VENIR' | 'EN_RETARD' | 'REPORTE' | 'TERMINE' | 'ANNULE'
