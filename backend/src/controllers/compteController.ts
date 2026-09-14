@@ -12,6 +12,9 @@ import {
   modifierEmailReelSchema,
 } from "../utils/validation/compteValidator";
 import { reponseSucces, reponseErreur } from "../utils/reponses";
+import { calculerStatutTournoi } from "../utils/tournoiStatut";
+import { calculerStatutMatch } from "../utils/matchStatut";
+import { calculerAge } from "../utils/age";
 
 const MOT_DE_PASSE_ORGANISATEUR_DEFAUT = "Orga2025!";
 const MOT_DE_PASSE_JOUEUR_DEFAUT = "Koko2025!";
@@ -58,7 +61,10 @@ async function genererIdKoko(): Promise<string> {
   throw new Error("Impossible de generer un idKoko unique apres 10 tentatives");
 }
 
-// GET /comptes — liste tous les comptes sauf admin
+// GET /comptes — liste tous les comptes sauf admin. Pour un joueur :
+// surnom, date de naissance et age (calcule ici, jamais stocke). Pour un
+// organisateur : ses tournois avec leur statut RECALCULE depuis les
+// dates, jamais le statut brut de la base.
 export async function getComptes(req: Request, res: Response, next: NextFunction) {
   try {
     const comptes = await prisma.user.findMany({
@@ -72,12 +78,138 @@ export async function getComptes(req: Request, res: Response, next: NextFunction
         role: true,
         actif: true,
         createdAt: true,
-        joueur: { select: { idKoko: true } },
-        tournois: { select: { id: true, nom: true, statut: true } },
+        joueur: { select: { idKoko: true, surnom: true, dateNaissance: true, avatar: true } },
+        tournois: { select: { id: true, nom: true, statut: true, dateDebut: true, dateFin: true } },
       },
       orderBy: { createdAt: "desc" },
     });
-    return reponseSucces(res, comptes);
+
+    const resultat = comptes.map(({ joueur, tournois, ...compte }) => ({
+      ...compte,
+      joueur: joueur && { ...joueur, age: calculerAge(joueur.dateNaissance) },
+      tournois: tournois.map((tournoi) => ({ ...tournoi, statut: calculerStatutTournoi(tournoi) })),
+    }));
+
+    return reponseSucces(res, resultat);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// GET /comptes/:id — fiche detaillee d'un compte (ADMIN).
+// Joueur : identite, age, photo, ses tournois (ceux ou il est certifie,
+// avec son equipe et son maillot) et ses stats toutes competitions.
+// Organisateur : ses tournois. Statuts toujours recalcules. Un compte
+// ADMIN repond 404, comme un compte inexistant (la liste ne les montre
+// jamais non plus).
+export async function getCompteById(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = parseInt(String(req.params.id), 10);
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        emailReel: true,
+        nom: true,
+        prenom: true,
+        role: true,
+        actif: true,
+        createdAt: true,
+        joueur: { select: { id: true, idKoko: true, surnom: true, dateNaissance: true, avatar: true } },
+        tournois: {
+          select: { id: true, nom: true, statut: true, dateDebut: true, dateFin: true },
+          orderBy: { dateDebut: "desc" },
+        },
+      },
+    });
+    if (!user || user.role === "ADMIN") return reponseErreur(res, "Compte introuvable", 404);
+
+    const { joueur, tournois, ...compte } = user;
+
+    if (!joueur) {
+      return reponseSucces(res, {
+        ...compte,
+        tournois: tournois.map((tournoi) => ({ ...tournoi, statut: calculerStatutTournoi(tournoi) })),
+      });
+    }
+
+    const champsTournoi = { id: true, nom: true, statut: true, dateDebut: true, dateFin: true } as const;
+    const [licences, inscriptions, stats] = await Promise.all([
+      prisma.tournoiJoueur.findMany({
+        where: { joueurId: joueur.id },
+        select: { tournoiId: true, tournoi: { select: champsTournoi } },
+        orderBy: { tournoi: { dateDebut: "desc" } },
+      }),
+      prisma.equipeJoueur.findMany({
+        where: { joueurId: joueur.id },
+        select: { tournoiId: true, numeroDeMaillot: true, equipe: { select: { id: true, nom: true } } },
+      }),
+      prisma.stat.findMany({
+        where: { joueurId: joueur.id },
+        select: {
+          points: true,
+          fautes: true,
+          contres: true,
+          tempsJeu: true,
+          match: {
+            select: {
+              statut: true,
+              date: true,
+              score1: true,
+              score2: true,
+              tournoi: { select: { statut: true, dateDebut: true, dateFin: true } },
+            },
+          },
+        },
+      }),
+    ]);
+
+    const equipeParTournoi = new Map(inscriptions.map((i) => [i.tournoiId, i]));
+
+    // Stats toutes competitions : meme regle que le classement, seuls les
+    // matchs REELLEMENT termines comptent. Un tournoi annule ne compte pas.
+    // Les stats d'un tournoi dont le joueur a ete retire comptent : elles
+    // font partie de son historique reel (l'admin voit tout).
+    const comptees = stats.filter(
+      (s) =>
+        calculerStatutMatch(s.match) === "TERMINE" &&
+        calculerStatutTournoi(s.match.tournoi) !== "ANNULE"
+    );
+    const matchsJoues = comptees.length;
+    const somme = (cle: "points" | "fautes" | "contres" | "tempsJeu") =>
+      comptees.reduce((total, s) => total + s[cle], 0);
+    const moyenne = (total: number) =>
+      matchsJoues === 0 ? 0 : Math.round((total / matchsJoues) * 10) / 10;
+    const totalPts = somme("points");
+    const totalFautes = somme("fautes");
+    const totalContres = somme("contres");
+    const totalTempsJeu = somme("tempsJeu");
+
+    return reponseSucces(res, {
+      ...compte,
+      joueur: { ...joueur, age: calculerAge(joueur.dateNaissance) },
+      tournois: licences.map((licence) => {
+        const inscription = equipeParTournoi.get(licence.tournoiId);
+        return {
+          tournoi: { ...licence.tournoi, statut: calculerStatutTournoi(licence.tournoi) },
+          equipe: inscription
+            ? { ...inscription.equipe, numeroDeMaillot: inscription.numeroDeMaillot }
+            : null,
+        };
+      }),
+      statsGlobales: {
+        matchsJoues,
+        totalPts,
+        totalFautes,
+        totalContres,
+        totalTempsJeu,
+        moyennePts: moyenne(totalPts),
+        moyenneFautes: moyenne(totalFautes),
+        moyenneContres: moyenne(totalContres),
+        moyenneTempsJeu: moyenne(totalTempsJeu),
+      },
+    });
   } catch (err) {
     next(err);
   }
@@ -135,6 +267,7 @@ export async function creerJoueur(req: Request, res: Response, next: NextFunctio
           idKoko,
           nomLegal: data.nomLegal,
           prenom: data.prenom,
+          dateNaissance: data.dateNaissance,
           userId: user.id,
         },
       });

@@ -181,6 +181,8 @@ export const openapiDocument = {
       get: {
         tags: ["Comptes"],
         summary: "Liste tous les comptes (sauf ADMIN)",
+        description:
+          "Joueur : joueur { idKoko, surnom, dateNaissance, age, avatar } — age calcule par le serveur. Organisateur : tournois { id, nom, dateDebut, dateFin, statut } avec le statut RECALCULE depuis les dates.",
         responses: { "200": succes("Liste des comptes"), "401": ref("NonAuthentifie"), "403": ref("AccesRefuse") },
       },
     },
@@ -225,6 +227,14 @@ export const openapiDocument = {
       },
     },
     "/comptes/{id}": {
+      get: {
+        tags: ["Comptes"],
+        summary: "Fiche detaillee d'un compte (ADMIN)",
+        description:
+          "Joueur : joueur { id, idKoko, surnom, dateNaissance, age, avatar }, tournois [{ tournoi (statut recalcule), equipe { id, nom, numeroDeMaillot } | null }] (tournois ou il est certifie), statsGlobales { matchsJoues, totalPts, totalFautes, totalContres, totalTempsJeu, moyennePts, moyenneFautes, moyenneContres, moyenneTempsJeu } — seuls les matchs TERMINE comptent, tournois annules exclus, stats des tournois dont il a ete retire incluses. Organisateur : tournois [{ id, nom, dateDebut, dateFin, statut recalcule }]. Compte ADMIN ou inexistant -> 404.",
+        parameters: [paramId("id", "id du compte User")],
+        responses: { "200": succes("Fiche du compte"), "403": ref("AccesRefuse"), "404": ref("Introuvable") },
+      },
       put: {
         tags: ["Comptes"],
         summary: "Modifie l'identite d'un compte (nom, prenom ; surnom/dateNaissance pour un joueur)",
@@ -278,6 +288,8 @@ export const openapiDocument = {
       get: {
         tags: ["Tournois"],
         summary: "Liste tous les tournois (ADMIN), filtrable par ?organisateurId= et ?statut=",
+        description:
+          "Chaque tournoi porte organisateur { id, nom, prenom } et compteurs { equipes, joueurs (pool), scoresASaisir (matchs EN_RETARD) }.",
         responses: { "200": succes("Liste"), "403": ref("AccesRefuse") },
       },
       post: {

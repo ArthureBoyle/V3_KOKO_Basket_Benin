@@ -4,6 +4,7 @@
 import { Router } from "express";
 import {
   getComptes,
+  getCompteById,
   creerOrganisateur,
   creerJoueur,
   desactiverCompte,
@@ -22,6 +23,7 @@ const router = Router();
 router.use(verifierAuth, verifierRole("ADMIN"));
 
 router.get("/", getComptes);
+router.get("/:id", getCompteById);
 router.post("/organisateur", creerOrganisateur);
 router.post("/joueur", creerJoueur);
 router.put("/:id", modifierCompte);

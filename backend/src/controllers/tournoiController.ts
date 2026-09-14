@@ -19,7 +19,27 @@ function enrichir<T extends { statut: string; dateDebut: Date; dateFin: Date }>(
   return { ...tournoi, statut: calculerStatutTournoi(tournoi) };
 }
 
+// Compteurs d'un tournoi (accueil organisateur, dashboard admin), calcules
+// a la lecture, jamais stockes. "scoresASaisir" = matchs a la date passee
+// sans score (EN_RETARD), meme calcul dynamique que partout ailleurs.
+const includeCompteurs = {
+  _count: { select: { equipes: true, joueursAssignes: true } },
+  matchs: { select: { statut: true, date: true, score1: true, score2: true } },
+} as const;
+
+function calculerCompteurs(
+  _count: { equipes: number; joueursAssignes: number },
+  matchs: { statut: string; date: Date; score1: number | null; score2: number | null }[]
+) {
+  return {
+    equipes: _count.equipes,
+    joueurs: _count.joueursAssignes,
+    scoresASaisir: matchs.filter((m) => calculerStatutMatch(m) === "EN_RETARD").length,
+  };
+}
+
 // GET /tournois — ADMIN seulement. Filtres : ?statut=, ?organisateurId=
+// Chaque tournoi porte ses compteurs (dashboard admin).
 export async function getTournois(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const where: any = {};
@@ -31,11 +51,15 @@ export async function getTournois(req: AuthRequest, res: Response, next: NextFun
       where,
       include: {
         organisateur: { select: { id: true, nom: true, prenom: true } },
+        ...includeCompteurs,
       },
       orderBy: { createdAt: "desc" },
     });
 
-    let enrichis = tournois.map(enrichir);
+    let enrichis = tournois.map(({ _count, matchs, ...tournoi }) => ({
+      ...enrichir(tournoi),
+      compteurs: calculerCompteurs(_count, matchs),
+    }));
     if (req.query.statut) {
       enrichis = enrichis.filter((t) => t.statut === req.query.statut);
     }
@@ -55,24 +79,15 @@ export async function getMesTournois(req: AuthRequest, res: Response, next: Next
     const tournois = await prisma.tournoi.findMany({
       where: { organisateurId: req.user!.userId },
       orderBy: { createdAt: "desc" },
-      include: {
-        _count: { select: { equipes: true, joueursAssignes: true } },
-        matchs: { select: { statut: true, date: true, score1: true, score2: true } },
-      },
+      include: includeCompteurs,
     });
 
-    // "scoresASaisir" = matchs a la date passee sans score (EN_RETARD),
-    // meme calcul dynamique que partout ailleurs, jamais un champ stocke.
     // Un tournoi ANNULE n'apparait JAMAIS ici, quel que soit le filtre
     // demande — l'organisateur ne doit meme pas savoir qu'il a existe.
     let enrichis = tournois
       .map(({ _count, matchs, ...tournoi }) => ({
         ...enrichir(tournoi),
-        compteurs: {
-          equipes: _count.equipes,
-          joueurs: _count.joueursAssignes,
-          scoresASaisir: matchs.filter((m) => calculerStatutMatch(m) === "EN_RETARD").length,
-        },
+        compteurs: calculerCompteurs(_count, matchs),
       }))
       .filter((t) => t.statut !== "ANNULE");
     if (req.query.statut) {

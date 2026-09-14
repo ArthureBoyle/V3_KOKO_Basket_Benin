@@ -418,7 +418,7 @@ describe("Tournois", () => {
         )
       );
       const joueur = await prisma.joueur.create({
-        data: { idKoko: "KOKO-2026-9206", nomLegal: "S", prenom: "Joueur", userId: joueurUserId },
+        data: { dateNaissance: new Date("2000-01-01"), idKoko: "KOKO-2026-9206", nomLegal: "S", prenom: "Joueur", userId: joueurUserId },
       });
       await prisma.tournoiJoueur.create({ data: { tournoiId: tournoi.id, joueurId: joueur.id } });
 
@@ -443,6 +443,14 @@ describe("Tournois", () => {
       // Les donnees brutes servant au calcul ne fuient pas dans la reponse.
       expect(ligne._count).toBeUndefined();
       expect(ligne.matchs).toBeUndefined();
+
+      // Memes compteurs cote ADMIN, dans GET /tournois (dashboard admin).
+      const vueAdmin = await request(app).get("/tournois").set("Cookie", cookieValue(cookiesAdmin, "accessToken"));
+      expect(vueAdmin.status).toBe(200);
+      const ligneAdmin = vueAdmin.body.data.find((t: any) => t.id === tournoi.id);
+      expect(ligneAdmin.compteurs).toEqual({ equipes: 3, joueurs: 1, scoresASaisir: 2 });
+      expect(ligneAdmin.organisateur.id).toBe(orga2Id);
+      expect(ligneAdmin._count).toBeUndefined();
     });
   });
 

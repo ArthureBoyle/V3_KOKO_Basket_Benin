@@ -89,7 +89,7 @@ async function seed() {
       data: { email: `k6-joueur-${i}@koko.bj`, motDePasse: hash, role: "JOUEUR", nom: "K6", prenom: `J${i}` },
     });
     const joueur = await prisma.joueur.create({
-      data: { idKoko: `K6-${String(i).padStart(4, "0")}`, nomLegal: "K6", prenom: `J${i}`, userId: user.id },
+      data: { dateNaissance: new Date("2000-01-01"), idKoko: `K6-${String(i).padStart(4, "0")}`, nomLegal: "K6", prenom: `J${i}`, userId: user.id },
     });
     await prisma.tournoiJoueur.create({ data: { tournoiId: tournoi.id, joueurId: joueur.id } });
 

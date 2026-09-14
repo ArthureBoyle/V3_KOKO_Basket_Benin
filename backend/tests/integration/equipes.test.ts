@@ -65,7 +65,7 @@ describe("Equipes + pool de licences", () => {
       });
       userIds.push(user.id);
       const joueur = await prisma.joueur.create({
-        data: { idKoko, nomLegal: "Joueur", prenom, userId: user.id },
+        data: { dateNaissance: new Date("2000-01-01"), idKoko, nomLegal: "Joueur", prenom, userId: user.id },
       });
       joueurIds.push(joueur.id);
       return joueur.id;

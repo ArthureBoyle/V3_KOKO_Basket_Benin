@@ -59,7 +59,7 @@ describe("Acces au classement", () => {
       data: { email: EMAIL_J1, motDePasse: hash, role: "JOUEUR", nom: "Joueur", prenom: "J1" },
     });
     userIds.push(userJ1.id);
-    const joueur1 = await prisma.joueur.create({ data: { idKoko: "KOKO-2026-6111", nomLegal: "Joueur", prenom: "J1", userId: userJ1.id } });
+    const joueur1 = await prisma.joueur.create({ data: { dateNaissance: new Date("2000-01-01"), idKoko: "KOKO-2026-6111", nomLegal: "Joueur", prenom: "J1", userId: userJ1.id } });
     joueur1Id = joueur1.id;
     joueurIds.push(joueur1Id);
 
@@ -67,7 +67,7 @@ describe("Acces au classement", () => {
       data: { email: EMAIL_J2, motDePasse: hash, role: "JOUEUR", nom: "Joueur", prenom: "J2" },
     });
     userIds.push(userJ2.id);
-    const joueur2 = await prisma.joueur.create({ data: { idKoko: "KOKO-2026-6222", nomLegal: "Joueur", prenom: "J2", userId: userJ2.id } });
+    const joueur2 = await prisma.joueur.create({ data: { dateNaissance: new Date("2000-01-01"), idKoko: "KOKO-2026-6222", nomLegal: "Joueur", prenom: "J2", userId: userJ2.id } });
     joueurIds.push(joueur2.id);
 
     const tournoi1 = await prisma.tournoi.create({

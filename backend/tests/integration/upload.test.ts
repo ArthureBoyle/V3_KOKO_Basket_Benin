@@ -70,7 +70,7 @@ describe("Upload images (avatar joueur / logo equipe)", () => {
       data: { email: EMAIL_J1, motDePasse: hash, role: "JOUEUR", nom: "Joueur", prenom: "J1" },
     });
     userIds.push(userJ1.id);
-    const joueur1 = await prisma.joueur.create({ data: { idKoko: "KOKO-2026-8111", nomLegal: "Joueur", prenom: "J1", userId: userJ1.id } });
+    const joueur1 = await prisma.joueur.create({ data: { dateNaissance: new Date("2000-01-01"), idKoko: "KOKO-2026-8111", nomLegal: "Joueur", prenom: "J1", userId: userJ1.id } });
     joueur1Id = joueur1.id;
     joueurIds.push(joueur1Id);
 
@@ -78,7 +78,7 @@ describe("Upload images (avatar joueur / logo equipe)", () => {
       data: { email: EMAIL_J2, motDePasse: hash, role: "JOUEUR", nom: "Joueur", prenom: "J2" },
     });
     userIds.push(userJ2.id);
-    const joueur2 = await prisma.joueur.create({ data: { idKoko: "KOKO-2026-8222", nomLegal: "Joueur", prenom: "J2", userId: userJ2.id } });
+    const joueur2 = await prisma.joueur.create({ data: { dateNaissance: new Date("2000-01-01"), idKoko: "KOKO-2026-8222", nomLegal: "Joueur", prenom: "J2", userId: userJ2.id } });
     joueur2Id = joueur2.id;
     joueurIds.push(joueur2Id);
 

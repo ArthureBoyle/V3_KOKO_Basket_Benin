@@ -163,7 +163,7 @@ describe("Comptes", () => {
       const res = await request(app)
         .post("/comptes/joueur")
         .set("Cookie", cookieValue(cookiesAdmin, "accessToken"))
-        .send({ nomLegal: "Adjovi", prenom: "Koffi", emailReel: "koffi@example.com" });
+        .send({ nomLegal: "Adjovi", prenom: "Koffi", emailReel: "koffi@example.com", dateNaissance: "2000-05-17" });
 
       expect(res.status).toBe(201);
       expect(res.body.data.idKoko).toMatch(/^KOKO-\d{4}-\d{4}$/);
@@ -391,7 +391,7 @@ describe("Comptes", () => {
       });
       joueurUserId = user.id;
       idsComptesCrees.push(joueurUserId);
-      await prisma.joueur.create({ data: { idKoko: "KOKO-2026-9106", nomLegal: "Legal", prenom: "Koffi", userId: user.id } });
+      await prisma.joueur.create({ data: { dateNaissance: new Date("2000-01-01"), idKoko: "KOKO-2026-9106", nomLegal: "Legal", prenom: "Koffi", userId: user.id } });
     });
 
     it("organisateur : nom et prenom -> 200", async () => {
@@ -507,6 +507,235 @@ describe("Comptes", () => {
           .send({ emailReel: "pirate@example.com", codeAdmin: CODE_ADMIN });
         expect(res.status).toBe(403);
       });
+    });
+  });
+  describe("Date de naissance et age des joueurs", () => {
+    const corpsJoueur = { nomLegal: "Dossou", prenom: "Ama", emailReel: "ama@example.com" };
+
+    it("creation sans dateNaissance -> 400", async () => {
+      const res = await request(app)
+        .post("/comptes/joueur")
+        .set("Cookie", cookieValue(cookiesAdmin, "accessToken"))
+        .send(corpsJoueur);
+      expect(res.status).toBe(400);
+    });
+
+    it("creation avec une date dans le futur -> 400", async () => {
+      const res = await request(app)
+        .post("/comptes/joueur")
+        .set("Cookie", cookieValue(cookiesAdmin, "accessToken"))
+        .send({ ...corpsJoueur, dateNaissance: "2999-01-01" });
+      expect(res.status).toBe(400);
+    });
+
+    it("creation avec une date avant 1900 (faute de frappe) -> 400", async () => {
+      const res = await request(app)
+        .post("/comptes/joueur")
+        .set("Cookie", cookieValue(cookiesAdmin, "accessToken"))
+        .send({ ...corpsJoueur, dateNaissance: "0199-05-17" });
+      expect(res.status).toBe(400);
+    });
+
+    it("creation valide -> date de naissance enregistree", async () => {
+      const res = await request(app)
+        .post("/comptes/joueur")
+        .set("Cookie", cookieValue(cookiesAdmin, "accessToken"))
+        .send({ ...corpsJoueur, dateNaissance: "2003-11-02" });
+      expect(res.status).toBe(201);
+      const joueur = await prisma.joueur.findUnique({ where: { idKoko: res.body.data.idKoko } });
+      idsComptesCrees.push(joueur!.userId);
+      expect(joueur!.dateNaissance!.toISOString().slice(0, 10)).toBe("2003-11-02");
+    });
+
+    it("GET /comptes -> age exact la veille et le jour de l'anniversaire, avatar present", async () => {
+      const auj = new Date();
+      const y = auj.getUTCFullYear();
+      const m = auj.getUTCMonth();
+      const d = auj.getUTCDate();
+      const anniversaireAujourdhui = new Date(Date.UTC(y - 20, m, d));
+      const anniversaireDemain = new Date(Date.UTC(y - 20, m, d + 1));
+
+      const creer = async (email: string, idKoko: string, dateNaissance: Date) => {
+        const user = await prisma.user.create({
+          data: { email, motDePasse: "x", role: "JOUEUR", nom: "Age", prenom: idKoko },
+        });
+        idsComptesCrees.push(user.id);
+        await prisma.joueur.create({ data: { idKoko, nomLegal: "Age", prenom: idKoko, dateNaissance, userId: user.id } });
+        return user.id;
+      };
+      const idVingt = await creer("test9107@koko.bj", "KOKO-2026-9107", anniversaireAujourdhui);
+      const idDixNeuf = await creer("test9108@koko.bj", "KOKO-2026-9108", anniversaireDemain);
+
+      const res = await request(app).get("/comptes").set("Cookie", cookieValue(cookiesAdmin, "accessToken"));
+      expect(res.status).toBe(200);
+      const trouver = (id: number) => res.body.data.find((c: any) => c.id === id);
+
+      expect(trouver(idVingt).joueur.age).toBe(20);
+      expect(trouver(idDixNeuf).joueur.age).toBe(19);
+      expect(trouver(idVingt).joueur).toHaveProperty("avatar");
+      expect(trouver(idVingt).joueur).toHaveProperty("surnom");
+      expect(trouver(idVingt).joueur).toHaveProperty("dateNaissance");
+    });
+
+    it("PUT /comptes/:id : dateNaissance future -> 400, null -> 400 (corrigeable, pas effacable)", async () => {
+      const cible = await prisma.user.findFirst({ where: { email: "test9107@koko.bj" } });
+      const futur = await request(app)
+        .put(`/comptes/${cible!.id}`)
+        .set("Cookie", cookieValue(cookiesAdmin, "accessToken"))
+        .send({ dateNaissance: "2999-01-01" });
+      expect(futur.status).toBe(400);
+
+      const effacer = await request(app)
+        .put(`/comptes/${cible!.id}`)
+        .set("Cookie", cookieValue(cookiesAdmin, "accessToken"))
+        .send({ dateNaissance: null });
+      expect(effacer.status).toBe(400);
+
+      const corriger = await request(app)
+        .put(`/comptes/${cible!.id}`)
+        .set("Cookie", cookieValue(cookiesAdmin, "accessToken"))
+        .send({ dateNaissance: "1999-01-15" });
+      expect(corriger.status).toBe(200);
+    });
+  });
+
+  describe("GET /comptes — statut des tournois recalcule", () => {
+    it("un tournoi aux dates passees, stocke A_VENIR en base, ressort TERMINE", async () => {
+      const tournoi = await prisma.tournoi.create({
+        data: {
+          nom: "Tournoi Passe Comptes", lieu: "Cotonou",
+          dateDebut: new Date("2020-01-01"), dateFin: new Date("2020-01-05"),
+          organisateurId: orgaId, licencesMax: 5, equipesMax: 5,
+        },
+      });
+      try {
+        expect(tournoi.statut).toBe("A_VENIR");
+        const res = await request(app).get("/comptes").set("Cookie", cookieValue(cookiesAdmin, "accessToken"));
+        const orga = res.body.data.find((c: any) => c.id === orgaId);
+        expect(orga.tournois.find((t: any) => t.id === tournoi.id).statut).toBe("TERMINE");
+      } finally {
+        await prisma.tournoi.delete({ where: { id: tournoi.id } });
+      }
+    });
+  });
+  describe("GET /comptes/:id — fiche detaillee (ADMIN)", () => {
+    let joueurUserId: number;
+    let joueurId: number;
+    const tournoiIds: number[] = [];
+    let tournoiEnCoursId: number;
+    let tournoiAnnuleId: number;
+
+    beforeAll(async () => {
+      const user = await prisma.user.create({
+        data: { email: "test9110@koko.bj", motDePasse: "x", role: "JOUEUR", nom: "Fiche", prenom: "Joueur" },
+      });
+      joueurUserId = user.id;
+      idsComptesCrees.push(user.id);
+      const joueur = await prisma.joueur.create({
+        data: { idKoko: "KOKO-2026-9110", nomLegal: "Fiche", prenom: "Joueur", dateNaissance: new Date("2004-03-10"), userId: user.id },
+      });
+      joueurId = joueur.id;
+
+      const creerTournoi = async (nom: string, debut: string, fin: string, statut?: "ANNULE") => {
+        const t = await prisma.tournoi.create({
+          data: {
+            nom, lieu: "Cotonou", dateDebut: new Date(debut), dateFin: new Date(fin),
+            organisateurId: orgaId, licencesMax: 5, equipesMax: 5, ...(statut ? { statut } : {}),
+          },
+        });
+        tournoiIds.push(t.id);
+        const [e1, e2] = await Promise.all(
+          ["A", "B"].map((n) => prisma.equipe.create({ data: { nom: `${nom}-${n}`, couleur: "#123456", tournoiId: t.id } }))
+        );
+        return { t, e1, e2 };
+      };
+      const passe = new Date("2020-02-02T18:00:00Z");
+
+      // Tournoi 1 : certifie + equipe. Un match TERMINE (compte) et un match EN_RETARD (ne compte pas).
+      const t1 = await creerTournoi("Fiche T1", "2099-01-01", "2099-12-31");
+      tournoiEnCoursId = t1.t.id;
+      await prisma.tournoiJoueur.create({ data: { tournoiId: t1.t.id, joueurId } });
+      await prisma.equipeJoueur.create({ data: { equipeId: t1.e1.id, tournoiId: t1.t.id, joueurId, numeroDeMaillot: 23 } });
+      const m1 = await prisma.match.create({ data: { tournoiId: t1.t.id, equipe1Id: t1.e1.id, equipe2Id: t1.e2.id, date: passe, lieu: "Salle", type: "Poule", score1: 60, score2: 50 } });
+      const m2 = await prisma.match.create({ data: { tournoiId: t1.t.id, equipe1Id: t1.e1.id, equipe2Id: t1.e2.id, date: passe, lieu: "Salle", type: "Poule" } });
+      await prisma.stat.create({ data: { matchId: m1.id, joueurId, equipeId: t1.e1.id, points: 20, fautes: 2, contres: 1, tempsJeu: 30 } });
+      await prisma.stat.create({ data: { matchId: m2.id, joueurId, equipeId: t1.e1.id, points: 99, fautes: 5, contres: 9, tempsJeu: 40 } });
+
+      // Tournoi 2 : ANNULE, joueur certifie sans equipe. Son match termine ne compte pas.
+      const t2 = await creerTournoi("Fiche T2", "2021-01-01", "2021-01-10", "ANNULE");
+      tournoiAnnuleId = t2.t.id;
+      await prisma.tournoiJoueur.create({ data: { tournoiId: t2.t.id, joueurId } });
+      const m3 = await prisma.match.create({ data: { tournoiId: t2.t.id, equipe1Id: t2.e1.id, equipe2Id: t2.e2.id, date: passe, lieu: "Salle", type: "Poule", score1: 70, score2: 40 } });
+      await prisma.stat.create({ data: { matchId: m3.id, joueurId, equipeId: t2.e1.id, points: 50, fautes: 4, contres: 4, tempsJeu: 35 } });
+
+      // Tournoi 3 : le joueur en a ete RETIRE (plus dans le pool). Son match termine compte quand meme.
+      const t3 = await creerTournoi("Fiche T3", "2019-01-01", "2019-01-10");
+      const m4 = await prisma.match.create({ data: { tournoiId: t3.t.id, equipe1Id: t3.e1.id, equipe2Id: t3.e2.id, date: passe, lieu: "Salle", type: "Poule", score1: 55, score2: 45 } });
+      await prisma.stat.create({ data: { matchId: m4.id, joueurId, equipeId: t3.e1.id, points: 10, fautes: 1, contres: 0, tempsJeu: 20 } });
+    });
+
+    afterAll(async () => {
+      await prisma.stat.deleteMany({ where: { joueurId } });
+      await prisma.match.deleteMany({ where: { tournoiId: { in: tournoiIds } } });
+      await prisma.equipeJoueur.deleteMany({ where: { tournoiId: { in: tournoiIds } } });
+      await prisma.tournoiJoueur.deleteMany({ where: { tournoiId: { in: tournoiIds } } });
+      await prisma.equipe.deleteMany({ where: { tournoiId: { in: tournoiIds } } });
+      await prisma.tournoi.deleteMany({ where: { id: { in: tournoiIds } } });
+    });
+
+    it("joueur -> identite, age, photo, tournois certifies avec equipe, stats toutes competitions", async () => {
+      const res = await request(app).get(`/comptes/${joueurUserId}`).set("Cookie", cookieValue(cookiesAdmin, "accessToken"));
+      expect(res.status).toBe(200);
+      const fiche = res.body.data;
+
+      expect(fiche.joueur.idKoko).toBe("KOKO-2026-9110");
+      expect(typeof fiche.joueur.age).toBe("number");
+      expect(fiche.joueur).toHaveProperty("avatar");
+      expect(fiche.motDePasse).toBeUndefined();
+      expect(fiche.codeSecretAdmin).toBeUndefined();
+
+      // Tournois ou il est certifie : T1 (avec equipe) et T2 annule (sans equipe). Pas T3 (retire).
+      expect(fiche.tournois).toHaveLength(2);
+      const t1 = fiche.tournois.find((l: any) => l.tournoi.id === tournoiEnCoursId);
+      expect(t1.tournoi.statut).toBe("A_VENIR");
+      expect(t1.equipe).toMatchObject({ nom: "Fiche T1-A", numeroDeMaillot: 23 });
+      const t2 = fiche.tournois.find((l: any) => l.tournoi.id === tournoiAnnuleId);
+      expect(t2.tournoi.statut).toBe("ANNULE");
+      expect(t2.equipe).toBeNull();
+
+      // Comptent : m1 (T1, termine) + m4 (T3, retire mais termine).
+      // Ne comptent pas : m2 (score attendu) et m3 (tournoi annule).
+      expect(fiche.statsGlobales).toEqual({
+        matchsJoues: 2,
+        totalPts: 30,
+        totalFautes: 3,
+        totalContres: 1,
+        totalTempsJeu: 50,
+        moyennePts: 15,
+        moyenneFautes: 1.5,
+        moyenneContres: 0.5,
+        moyenneTempsJeu: 25,
+      });
+    });
+
+    it("organisateur -> ses tournois avec statut recalcule, pas de bloc joueur ni de stats", async () => {
+      const res = await request(app).get(`/comptes/${orgaId}`).set("Cookie", cookieValue(cookiesAdmin, "accessToken"));
+      expect(res.status).toBe(200);
+      expect(res.body.data.joueur).toBeUndefined();
+      expect(res.body.data.statsGlobales).toBeUndefined();
+      const annule = res.body.data.tournois.find((t: any) => t.id === tournoiAnnuleId);
+      expect(annule.statut).toBe("ANNULE");
+      const passe = res.body.data.tournois.find((t: any) => t.nom === "Fiche T3");
+      expect(passe.statut).toBe("TERMINE");
+    });
+
+    it("compte ADMIN ou inexistant -> 404 ; organisateur connecte -> 403", async () => {
+      const admin = await request(app).get(`/comptes/${adminSansCodeId}`).set("Cookie", cookieValue(cookiesAdmin, "accessToken"));
+      expect(admin.status).toBe(404);
+      const inexistant = await request(app).get("/comptes/999999").set("Cookie", cookieValue(cookiesAdmin, "accessToken"));
+      expect(inexistant.status).toBe(404);
+      const parOrga = await request(app).get(`/comptes/${joueurUserId}`).set("Cookie", cookieValue(cookiesOrga, "accessToken"));
+      expect(parOrga.status).toBe(403);
     });
   });
 });
