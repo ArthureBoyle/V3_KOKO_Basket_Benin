@@ -63,5 +63,11 @@ export const assignerJoueurSchema = z.object({
   idKoko: z.string().min(1),
 });
 
+// Reattribution a un autre organisateur (ADMIN + code secret, le code
+// est lu par verifierCodeAdmin, pas ici).
+export const reattribuerTournoiSchema = z.object({
+  organisateurId: z.number().int().positive(),
+});
+
 export type CreerTournoiInput = z.infer<typeof creerTournoiSchema>;
 export type ModifierTournoiInput = z.infer<typeof modifierTournoiSchema>;

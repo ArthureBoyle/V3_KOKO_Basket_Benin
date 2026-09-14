@@ -28,6 +28,7 @@ describe("Routes joueur (/joueurs/moi)", () => {
   let joueur2Id: number;
   let joueur3Id: number;
   let matchId: number;
+  let matchAutresEquipesId: number;
 
   const userIds: number[] = [];
   const joueurIds: number[] = [];
@@ -39,14 +40,14 @@ describe("Routes joueur (/joueurs/moi)", () => {
     const hash = await bcrypt.hash(MOT_DE_PASSE, 10);
 
     const orga1 = await prisma.user.create({
-      data: { email: EMAIL_ORGA1, motDePasse: hash, role: "ORGANISATEUR", nom: "S", prenom: "Orga1", mustChangePassword: false },
+      data: { email: EMAIL_ORGA1, motDePasse: hash, role: "ORGANISATEUR", nom: "S", prenom: "Orga1" },
     });
     orga1Id = orga1.id;
     userIds.push(orga1Id);
 
     const creerJoueur = async (email: string, idKoko: string, prenom: string) => {
       const user = await prisma.user.create({
-        data: { email, motDePasse: hash, role: "JOUEUR", nom: "Joueur", prenom, mustChangePassword: false },
+        data: { email, motDePasse: hash, role: "JOUEUR", nom: "Joueur", prenom },
       });
       userIds.push(user.id);
       const joueur = await prisma.joueur.create({ data: { idKoko, nomLegal: "Joueur", prenom, userId: user.id } });
@@ -93,6 +94,17 @@ describe("Routes joueur (/joueurs/moi)", () => {
     });
     matchId = match.id;
     matchIds.push(matchId);
+
+    // Un match entre deux AUTRES equipes : aucun joueur du test n'y joue,
+    // il doit quand meme apparaitre dans le calendrier des joueurs du pool.
+    const equipeC = await prisma.equipe.create({ data: { nom: "Aigles", couleur: "#00FF00", tournoiId: tournoi1Id } });
+    const equipeD = await prisma.equipe.create({ data: { nom: "Requins", couleur: "#FFFF00", tournoiId: tournoi1Id } });
+    equipeIds.push(equipeC.id, equipeD.id);
+    const matchAutres = await prisma.match.create({
+      data: { tournoiId: tournoi1Id, equipe1Id: equipeC.id, equipe2Id: equipeD.id, date: new Date("2027-08-06T18:00:00Z"), lieu: "Gymnase", type: "Poule" },
+    });
+    matchAutresEquipesId = matchAutres.id;
+    matchIds.push(matchAutresEquipesId);
 
     cookiesOrga1 = (await request(app).post("/auth/login").send({ email: EMAIL_ORGA1, motDePasse: MOT_DE_PASSE })).headers["set-cookie"] as unknown as string[];
     cookiesJ1 = (await request(app).post("/auth/login").send({ email: EMAIL_J1, motDePasse: MOT_DE_PASSE })).headers["set-cookie"] as unknown as string[];
@@ -185,21 +197,22 @@ describe("Routes joueur (/joueurs/moi)", () => {
       expect(res.status).toBe(404);
     });
 
-    it("joueur2 (dans le pool, pas encore dans une equipe) -> 200, tableau vide", async () => {
+    it("joueur2 (dans le pool, pas encore dans une equipe) -> 200, tout le calendrier quand meme", async () => {
       const res = await request(app)
         .get(`/joueurs/moi/matchs?tournoiId=${tournoi1Id}`)
         .set("Cookie", cookieValue(cookiesJ2, "accessToken"));
       expect(res.status).toBe(200);
-      expect(res.body.data).toHaveLength(0);
+      expect(res.body.data.map((m: any) => m.id)).toEqual([matchId, matchAutresEquipesId]);
     });
 
-    it("joueur1 (dans equipeA) -> 200, contient son match", async () => {
+    it("joueur1 (dans equipeA) -> 200, son match ET celui des autres equipes, tries par date", async () => {
       const res = await request(app)
         .get(`/joueurs/moi/matchs?tournoiId=${tournoi1Id}`)
         .set("Cookie", cookieValue(cookiesJ1, "accessToken"));
       expect(res.status).toBe(200);
-      expect(res.body.data).toHaveLength(1);
-      expect(res.body.data[0].id).toBe(matchId);
+      expect(res.body.data.map((m: any) => m.id)).toEqual([matchId, matchAutresEquipesId]);
+      expect(res.body.data[1].equipe1.nom).toBe("Aigles");
+      expect(res.body.data[0].statut).toBe("A_VENIR");
     });
   });
 });

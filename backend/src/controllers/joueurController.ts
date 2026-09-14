@@ -70,8 +70,9 @@ export async function getMesTournois(req: AuthRequest, res: Response, next: Next
   }
 }
 
-// GET /joueurs/moi/matchs?tournoiId= — calendrier des matchs de SA
-// propre equipe pour ce tournoi (pas tout le tableau du tournoi).
+// GET /joueurs/moi/matchs?tournoiId= — TOUT le calendrier du tournoi :
+// le joueur suit la competition, pas seulement son equipe. Seule
+// condition : etre dans le pool du tournoi (certifie), meme sans equipe.
 export async function getMesMatchs(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     if (!req.query.tournoiId) {
@@ -95,18 +96,8 @@ export async function getMesMatchs(req: AuthRequest, res: Response, next: NextFu
     });
     if (!dansLePool) return reponseErreur(res, "Tournoi introuvable", 404);
 
-    const appartenance = await prisma.equipeJoueur.findUnique({
-      where: { tournoiId_joueurId: { tournoiId, joueurId: joueur.id } },
-    });
-    // Dans le pool mais pas encore place dans une equipe : calendrier
-    // vide, pas une erreur.
-    if (!appartenance) return reponseSucces(res, []);
-
     const matches = await prisma.match.findMany({
-      where: {
-        tournoiId,
-        OR: [{ equipe1Id: appartenance.equipeId }, { equipe2Id: appartenance.equipeId }],
-      },
+      where: { tournoiId },
       orderBy: { date: "asc" },
       include: {
         equipe1: { select: { id: true, nom: true, couleur: true } },

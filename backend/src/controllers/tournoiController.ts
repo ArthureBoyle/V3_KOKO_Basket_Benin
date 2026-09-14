@@ -8,9 +8,12 @@ import {
   creerTournoiSchema,
   modifierTournoiSchema,
   assignerJoueurSchema,
+  reattribuerTournoiSchema,
 } from "../utils/validation/tournoiValidator";
 import { reponseSucces, reponseErreur } from "../utils/reponses";
 import { calculerStatutTournoi, estTournoiModifiable } from "../utils/tournoiStatut";
+import { calculerStatutMatch } from "../utils/matchStatut";
+import { trouverChevauchement } from "../utils/chevauchementTournoi";
 
 function enrichir<T extends { statut: string; dateDebut: Date; dateFin: Date }>(tournoi: T) {
   return { ...tournoi, statut: calculerStatutTournoi(tournoi) };
@@ -45,17 +48,33 @@ export async function getTournois(req: AuthRequest, res: Response, next: NextFun
 
 // GET /tournois/mes-tournois — ORGANISATEUR seulement, scope automatique
 // sur ses propres tournois. Filtre : ?statut= (sert notamment a
-// consulter l'historique avec ?statut=TERMINE).
+// consulter l'historique avec ?statut=TERMINE). Chaque tournoi porte ses
+// compteurs pour l'accueil organisateur.
 export async function getMesTournois(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const tournois = await prisma.tournoi.findMany({
       where: { organisateurId: req.user!.userId },
       orderBy: { createdAt: "desc" },
+      include: {
+        _count: { select: { equipes: true, joueursAssignes: true } },
+        matchs: { select: { statut: true, date: true, score1: true, score2: true } },
+      },
     });
 
+    // "scoresASaisir" = matchs a la date passee sans score (EN_RETARD),
+    // meme calcul dynamique que partout ailleurs, jamais un champ stocke.
     // Un tournoi ANNULE n'apparait JAMAIS ici, quel que soit le filtre
     // demande — l'organisateur ne doit meme pas savoir qu'il a existe.
-    let enrichis = tournois.map(enrichir).filter((t) => t.statut !== "ANNULE");
+    let enrichis = tournois
+      .map(({ _count, matchs, ...tournoi }) => ({
+        ...enrichir(tournoi),
+        compteurs: {
+          equipes: _count.equipes,
+          joueurs: _count.joueursAssignes,
+          scoresASaisir: matchs.filter((m) => calculerStatutMatch(m) === "EN_RETARD").length,
+        },
+      }))
+      .filter((t) => t.statut !== "ANNULE");
     if (req.query.statut) {
       enrichis = enrichis.filter((t) => t.statut === req.query.statut);
     }
@@ -111,17 +130,12 @@ export async function creerTournoi(req: AuthRequest, res: Response, next: NextFu
       return reponseErreur(res, "L'utilisateur selectionne n'est pas un organisateur", 400);
     }
 
-    // Chevauchement de dates : un organisateur ne peut pas avoir deux
-    // tournois actifs sur la meme periode. Un tournoi ANNULE ne compte
-    // pas — il ne bloque jamais une nouvelle reservation.
-    const chevauchement = await prisma.tournoi.findFirst({
-      where: {
-        organisateurId: data.organisateurId,
-        statut: { not: "ANNULE" },
-        dateDebut: { lte: data.dateFin },
-        dateFin: { gte: data.dateDebut },
-      },
-    });
+    // Chevauchement de dates : voir utils/chevauchementTournoi.ts.
+    const chevauchement = await trouverChevauchement(
+      data.organisateurId,
+      data.dateDebut,
+      data.dateFin
+    );
     if (chevauchement) {
       return reponseErreur(res, "Cet organisateur a deja un tournoi sur cette periode", 400);
     }
@@ -206,6 +220,22 @@ export async function modifierTournoi(req: AuthRequest, res: Response, next: Nex
       );
     }
 
+    // Nouvelles dates : meme regle de chevauchement qu'a la creation (sinon
+    // prolonger un tournoi contournerait la verification). Un tournoi
+    // ANNULE ne bloque rien : la verification se fera a sa reactivation.
+    const datesModifiees = data.dateDebut !== undefined || data.dateFin !== undefined;
+    if (datesModifiees && tournoi.statut !== "ANNULE") {
+      const chevauchement = await trouverChevauchement(
+        tournoi.organisateurId,
+        dateDebutFinale,
+        dateFinFinale,
+        id
+      );
+      if (chevauchement) {
+        return reponseErreur(res, "Cet organisateur a deja un tournoi sur cette periode", 400);
+      }
+    }
+
     const misAJour = await prisma.tournoi.update({ where: { id }, data });
 
     return reponseSucces(res, enrichir(misAJour));
@@ -245,9 +275,66 @@ export async function reactiverTournoi(req: AuthRequest, res: Response, next: Ne
     const tournoi = await prisma.tournoi.findUnique({ where: { id } });
     if (!tournoi) return reponseErreur(res, "Tournoi introuvable", 404);
 
+    // Pendant l'annulation, la periode a pu etre reprise par un autre
+    // tournoi du meme organisateur (un ANNULE ne bloque rien) : on
+    // reverifie avant de le faire revivre.
+    const chevauchement = await trouverChevauchement(
+      tournoi.organisateurId,
+      tournoi.dateDebut,
+      tournoi.dateFin,
+      id
+    );
+    if (chevauchement) {
+      return reponseErreur(
+        res,
+        "Impossible de reactiver : cet organisateur a deja un tournoi sur cette periode",
+        400
+      );
+    }
+
     const misAJour = await prisma.tournoi.update({
       where: { id },
       data: { statut: "A_VENIR" },
+    });
+
+    return reponseSucces(res, enrichir(misAJour));
+  } catch (err) {
+    next(err);
+  }
+}
+
+// PUT /tournois/:id/organisateur — ADMIN + code secret admin. Donne le
+// tournoi a un autre organisateur. Equipes, pool, matchs et stats suivent
+// d'eux-memes : tout est rattache au tournoi, pas a l'organisateur. Une
+// seule colonne change (organisateurId) : l'ancien perd l'acces des sa
+// requete suivante (404) et redevient libre sur cette periode.
+export async function reattribuerTournoi(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const id = parseInt(String(req.params.id), 10);
+    const tournoi = await prisma.tournoi.findUnique({ where: { id } });
+    if (!tournoi) return reponseErreur(res, "Tournoi introuvable", 404);
+
+    const data = reattribuerTournoiSchema.parse(req.body);
+    if (data.organisateurId === tournoi.organisateurId) {
+      return reponseErreur(res, "Ce tournoi appartient deja a cet organisateur", 400);
+    }
+
+    const nouveau = await prisma.user.findUnique({ where: { id: data.organisateurId } });
+    if (!nouveau || nouveau.role !== "ORGANISATEUR") {
+      return reponseErreur(res, "L'utilisateur selectionne n'est pas un organisateur", 400);
+    }
+    if (!nouveau.actif) {
+      return reponseErreur(res, "Cet organisateur est desactive", 400);
+    }
+
+    const chevauchement = await trouverChevauchement(nouveau.id, tournoi.dateDebut, tournoi.dateFin);
+    if (chevauchement) {
+      return reponseErreur(res, "Cet organisateur a deja un tournoi sur cette periode", 400);
+    }
+
+    const misAJour = await prisma.tournoi.update({
+      where: { id },
+      data: { organisateurId: nouveau.id },
     });
 
     return reponseSucces(res, enrichir(misAJour));

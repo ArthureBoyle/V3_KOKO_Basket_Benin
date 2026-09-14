@@ -3,10 +3,13 @@
 // ================================================
 import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcrypt";
+import { randomInt } from "crypto";
 import prisma from "../utils/prisma";
 import {
   creerOrganisateurSchema,
   creerJoueurSchema,
+  modifierCompteSchema,
+  modifierEmailReelSchema,
 } from "../utils/validation/compteValidator";
 import { reponseSucces, reponseErreur } from "../utils/reponses";
 
@@ -21,6 +24,18 @@ const MOT_DE_PASSE_JOUEUR_DEFAUT = "Koko2025!";
 function genererSuffixeAleatoire(longueur: number): string {
   const chiffres = "0123456789";
   return Array.from({ length: longueur }, () => chiffres[Math.floor(Math.random() * 10)]).join("");
+}
+
+// Mot de passe genere par le serveur : randomInt de crypto (aleatoire cryptographique,
+// contrairement a Math.random), alphabet sans caracteres ambigus
+// (0/O, 1/l/I) — l'admin le transmet a l'utilisateur hors app.
+const ALPHABET_MOT_DE_PASSE = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+
+function genererMotDePasseAleatoire(longueur = 12): string {
+  return Array.from(
+    { length: longueur },
+    () => ALPHABET_MOT_DE_PASSE[randomInt(ALPHABET_MOT_DE_PASSE.length)]
+  ).join("");
 }
 
 async function genererEmailKoko(prenom: string, nom: string): Promise<string> {
@@ -83,8 +98,6 @@ export async function creerOrganisateur(req: Request, res: Response, next: NextF
         role: "ORGANISATEUR",
         nom: data.nom,
         prenom: data.prenom,
-        // mustChangePassword: true est deja la valeur par defaut du
-        // schema — c'est elle qui force le changement au premier login.
       },
     });
 
@@ -163,8 +176,115 @@ export async function desactiverCompte(req: Request, res: Response, next: NextFu
 export async function reactiverCompte(req: Request, res: Response, next: NextFunction) {
   try {
     const id = parseInt(String(req.params.id), 10);
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) return reponseErreur(res, "Compte introuvable", 404);
     await prisma.user.update({ where: { id }, data: { actif: true } });
     return reponseSucces(res, { message: "Compte reactive" });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// PUT /comptes/:id/reinitialiser-mot-de-passe — ADMIN + code secret.
+// Identifiants perdus ou fuites : l'admin genere un NOUVEAU mot de passe
+// (aleatoire, jamais choisi a la main), renvoye UNE seule fois, qu'il
+// transmet a l'utilisateur hors app. L'utilisateur ne change jamais son
+// mot de passe lui-meme. Toutes ses sessions sont coupees : refresh
+// tokens supprimes, son access token en cours expire en 15 min max.
+export async function reinitialiserMotDePasse(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = parseInt(String(req.params.id), 10);
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) return reponseErreur(res, "Compte introuvable", 404);
+    if (user.role === "ADMIN") {
+      return reponseErreur(res, "Impossible de reinitialiser le mot de passe d'un compte admin", 403);
+    }
+
+    const nouveauMotDePasse = genererMotDePasseAleatoire();
+    const hash = await bcrypt.hash(nouveauMotDePasse, 10);
+
+    await prisma.$transaction([
+      prisma.user.update({ where: { id }, data: { motDePasse: hash } }),
+      prisma.refreshToken.deleteMany({ where: { userId: id } }),
+    ]);
+
+    return reponseSucces(res, { id, emailKoko: user.email, nouveauMotDePasse });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// PUT /comptes/:id — ADMIN, sans code. Identite seulement : nom, prenom,
+// et pour un joueur surnom / dateNaissance. L'email reel passe par sa
+// route protegee ; email KOKO, role et mot de passe jamais par ici.
+export async function modifierCompte(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = parseInt(String(req.params.id), 10);
+    const user = await prisma.user.findUnique({ where: { id }, include: { joueur: true } });
+    if (!user) return reponseErreur(res, "Compte introuvable", 404);
+    if (user.role === "ADMIN") {
+      return reponseErreur(res, "Impossible de modifier un compte admin", 403);
+    }
+
+    const data = modifierCompteSchema.parse(req.body);
+
+    if (!user.joueur && (data.surnom !== undefined || data.dateNaissance !== undefined)) {
+      return reponseErreur(res, "surnom et dateNaissance concernent uniquement les joueurs", 400);
+    }
+
+    if (user.joueur) {
+      // User.nom et Joueur.nomLegal portent la meme information (voir
+      // creerJoueur) : mis a jour ensemble, jamais l'un sans l'autre.
+      const [, joueur] = await prisma.$transaction([
+        prisma.user.update({ where: { id }, data: { nom: data.nom, prenom: data.prenom } }),
+        prisma.joueur.update({
+          where: { id: user.joueur.id },
+          data: {
+            nomLegal: data.nom,
+            prenom: data.prenom,
+            surnom: data.surnom,
+            dateNaissance: data.dateNaissance,
+          },
+        }),
+      ]);
+      return reponseSucces(res, {
+        id,
+        nom: joueur.nomLegal,
+        prenom: joueur.prenom,
+        surnom: joueur.surnom,
+        dateNaissance: joueur.dateNaissance,
+      });
+    }
+
+    const misAJour = await prisma.user.update({
+      where: { id },
+      data: { nom: data.nom, prenom: data.prenom },
+    });
+    return reponseSucces(res, { id, nom: misAJour.nom, prenom: misAJour.prenom });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// PUT /comptes/:id/email-reel — ADMIN + code secret. L'email reel est le
+// canal de contact hors app : le remplacer par une adresse controlee par
+// un attaquant revient a s'approprier le compte. D'ou le code en plus.
+export async function modifierEmailReel(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = parseInt(String(req.params.id), 10);
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) return reponseErreur(res, "Compte introuvable", 404);
+    if (user.role === "ADMIN") {
+      return reponseErreur(res, "Impossible de modifier un compte admin", 403);
+    }
+
+    const data = modifierEmailReelSchema.parse(req.body);
+    const misAJour = await prisma.user.update({
+      where: { id },
+      data: { emailReel: data.emailReel },
+    });
+
+    return reponseSucces(res, { id, emailReel: misAJour.emailReel });
   } catch (err) {
     next(err);
   }

@@ -13,10 +13,13 @@ import {
   assignerJoueur,
   desassignerJoueur,
   getJoueursDisponibles,
+  reattribuerTournoi,
 } from "../controllers/tournoiController";
 import { getClassementJoueurs, getClassementEquipes } from "../controllers/classementController";
 import { verifierAuth } from "../middlewares/verifierAuth";
 import { verifierRole } from "../middlewares/verifierRole";
+import { limiteurCodeAdmin } from "../middlewares/limiteurCodeAdmin";
+import { verifierCodeAdmin } from "../middlewares/verifierCodeAdmin";
 
 const router = Router();
 
@@ -32,6 +35,14 @@ router.post("/", verifierRole("ADMIN"), creerTournoi);
 router.put("/:id", verifierRole("ADMIN", "ORGANISATEUR"), modifierTournoi);
 router.put("/:id/annuler", verifierRole("ADMIN"), annulerTournoi);
 router.put("/:id/reactiver", verifierRole("ADMIN"), reactiverTournoi);
+// Action sensible : session ADMIN + code secret admin (body.codeAdmin).
+router.put(
+  "/:id/organisateur",
+  verifierRole("ADMIN"),
+  limiteurCodeAdmin,
+  verifierCodeAdmin,
+  reattribuerTournoi
+);
 
 // Pool de licences (TournoiJoueur) — assignation reservee a l'ADMIN,
 // lecture ouverte au proprietaire (verifiee dans le controller).

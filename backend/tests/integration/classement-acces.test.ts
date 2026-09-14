@@ -38,25 +38,25 @@ describe("Acces au classement", () => {
     const hash = await bcrypt.hash(MOT_DE_PASSE, 10);
 
     const admin = await prisma.user.create({
-      data: { email: EMAIL_ADMIN, motDePasse: hash, role: "ADMIN", nom: "S", prenom: "Admin", mustChangePassword: false },
+      data: { email: EMAIL_ADMIN, motDePasse: hash, role: "ADMIN", nom: "S", prenom: "Admin" },
     });
     adminId = admin.id;
     userIds.push(adminId);
 
     const orga1 = await prisma.user.create({
-      data: { email: EMAIL_ORGA1, motDePasse: hash, role: "ORGANISATEUR", nom: "S", prenom: "Orga1", mustChangePassword: false },
+      data: { email: EMAIL_ORGA1, motDePasse: hash, role: "ORGANISATEUR", nom: "S", prenom: "Orga1" },
     });
     orga1Id = orga1.id;
     userIds.push(orga1Id);
 
     const orga2 = await prisma.user.create({
-      data: { email: EMAIL_ORGA2, motDePasse: hash, role: "ORGANISATEUR", nom: "S", prenom: "Orga2", mustChangePassword: false },
+      data: { email: EMAIL_ORGA2, motDePasse: hash, role: "ORGANISATEUR", nom: "S", prenom: "Orga2" },
     });
     orga2Id = orga2.id;
     userIds.push(orga2Id);
 
     const userJ1 = await prisma.user.create({
-      data: { email: EMAIL_J1, motDePasse: hash, role: "JOUEUR", nom: "Joueur", prenom: "J1", mustChangePassword: false },
+      data: { email: EMAIL_J1, motDePasse: hash, role: "JOUEUR", nom: "Joueur", prenom: "J1" },
     });
     userIds.push(userJ1.id);
     const joueur1 = await prisma.joueur.create({ data: { idKoko: "KOKO-2026-6111", nomLegal: "Joueur", prenom: "J1", userId: userJ1.id } });
@@ -64,7 +64,7 @@ describe("Acces au classement", () => {
     joueurIds.push(joueur1Id);
 
     const userJ2 = await prisma.user.create({
-      data: { email: EMAIL_J2, motDePasse: hash, role: "JOUEUR", nom: "Joueur", prenom: "J2", mustChangePassword: false },
+      data: { email: EMAIL_J2, motDePasse: hash, role: "JOUEUR", nom: "Joueur", prenom: "J2" },
     });
     userIds.push(userJ2.id);
     const joueur2 = await prisma.joueur.create({ data: { idKoko: "KOKO-2026-6222", nomLegal: "Joueur", prenom: "J2", userId: userJ2.id } });

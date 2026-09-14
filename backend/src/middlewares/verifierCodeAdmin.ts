@@ -15,11 +15,17 @@ import { AuthRequest } from "./verifierAuth";
 import { reponseErreur } from "../utils/reponses";
 import { codeAdminSchema } from "../utils/validation/compteValidator";
 
+// Marque le refus pour limiteurCodeAdmin, qui ne compte que ceux-la.
+function refuser(res: Response, message: string) {
+  res.locals.codeAdminRefuse = true;
+  return reponseErreur(res, message, 403);
+}
+
 export async function verifierCodeAdmin(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const saisie = codeAdminSchema.safeParse(req.body ?? {});
     if (!saisie.success) {
-      return reponseErreur(res, "Code admin invalide", 403);
+      return refuser(res, "Code admin invalide");
     }
 
     const admin = await prisma.user.findUnique({
@@ -27,16 +33,12 @@ export async function verifierCodeAdmin(req: AuthRequest, res: Response, next: N
       select: { codeSecretAdmin: true },
     });
     if (!admin?.codeSecretAdmin) {
-      return reponseErreur(
-        res,
-        "Aucun code admin defini sur ce compte (scripts/definir-code-admin.ts)",
-        403
-      );
+      return refuser(res, "Aucun code admin defini sur ce compte (scripts/definir-code-admin.ts)");
     }
 
     const valide = await bcrypt.compare(saisie.data.codeAdmin, admin.codeSecretAdmin);
     if (!valide) {
-      return reponseErreur(res, "Code admin invalide", 403);
+      return refuser(res, "Code admin invalide");
     }
 
     return next();

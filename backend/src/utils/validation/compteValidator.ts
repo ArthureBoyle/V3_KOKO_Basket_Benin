@@ -18,6 +18,23 @@ export const creerJoueurSchema = z.object({
   emailReel: z.email(),
 });
 
+// Modification d'identite par l'ADMIN (sans code). strictObject : un
+// champ inconnu (emailReel, role, email, motDePasse...) est REFUSE (400)
+// au lieu d'etre ignore en silence — l'email reel a sa propre route,
+// protegee par le code secret. null efface surnom / dateNaissance.
+export const modifierCompteSchema = z
+  .strictObject({
+    nom: z.string().min(1).max(100).optional(),
+    prenom: z.string().min(1).max(100).optional(),
+    surnom: z.string().min(1).max(50).nullable().optional(),
+    dateNaissance: z.coerce.date().nullable().optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, { message: "Aucun champ a modifier" });
+
+export const modifierEmailReelSchema = z.object({
+  emailReel: z.email().max(254),
+});
+
 export type CreerOrganisateurInput = z.infer<typeof creerOrganisateurSchema>;
 export type CreerJoueurInput = z.infer<typeof creerJoueurSchema>;
 

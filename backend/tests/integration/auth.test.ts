@@ -33,7 +33,6 @@ describe("Auth", () => {
         motDePasse: hash,
         role: "ORGANISATEUR",
         actif: true,
-        mustChangePassword: false,
         nom: "Suite",
         prenom: "Test",
       },
@@ -46,7 +45,6 @@ describe("Auth", () => {
         motDePasse: hash,
         role: "ORGANISATEUR",
         actif: false,
-        mustChangePassword: false,
         nom: "Suite",
         prenom: "Desactive",
       },
@@ -194,33 +192,22 @@ describe("Auth", () => {
     });
   });
 
-  // Placee en dernier expres : elle change reellement le mot de passe du
-  // compte partage par les tests precedents. La verifier NE PASSE PAS par
-  // un nouveau /auth/login (5eme tentative, sous la limite de 5, mais
-  // verifier le NOUVEAU mot de passe en aurait demande une 6e -> 429).
-  // On verifie directement en base avec bcrypt.compare a la place.
-  describe("POST /auth/changer-mot-de-passe", () => {
-    it("mauvais ancien mot de passe -> 401", async () => {
-      const res = await request(app)
-        .post("/auth/changer-mot-de-passe")
-        .set("Cookie", cookieValue(cookiesValides, "accessToken"))
-        .send({ ancienMotDePasse: "FauxAncien!", nouveauMotDePasse: "NouveauMdp123!" });
-      expect(res.status).toBe(401);
-    });
-
-    it("bon ancien mot de passe -> 200, hash mis a jour, mustChangePassword passe a false", async () => {
+  // La fonctionnalite n'existe plus : seul l'admin change un mot de passe.
+  describe("POST /auth/changer-mot-de-passe (retiree)", () => {
+    it("la route n'existe plus -> 404", async () => {
       const res = await request(app)
         .post("/auth/changer-mot-de-passe")
         .set("Cookie", cookieValue(cookiesValides, "accessToken"))
         .send({ ancienMotDePasse: MOT_DE_PASSE, nouveauMotDePasse: "NouveauMdp123!" });
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(404);
+    });
 
-      const enBase = await prisma.user.findUnique({ where: { id: userActifId } });
-      expect(enBase?.mustChangePassword).toBe(false);
-      const nouveauValide = await bcrypt.compare("NouveauMdp123!", enBase!.motDePasse);
-      expect(nouveauValide).toBe(true);
-      const ancienEncoreValide = await bcrypt.compare(MOT_DE_PASSE, enBase!.motDePasse);
-      expect(ancienEncoreValide).toBe(false);
+    it("login et /auth/moi ne renvoient plus mustChangePassword", async () => {
+      const moi = await request(app)
+        .get("/auth/moi")
+        .set("Cookie", cookieValue(cookiesValides, "accessToken"));
+      expect(loginReponse.body.data).not.toHaveProperty("mustChangePassword");
+      expect(moi.body.data).not.toHaveProperty("mustChangePassword");
     });
   });
 });

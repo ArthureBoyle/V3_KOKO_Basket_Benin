@@ -6,7 +6,7 @@ import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcrypt";
 import prisma from "../utils/prisma";
 import { AuthRequest } from "../middlewares/verifierAuth";
-import { loginSchema, changerMotDePasseSchema } from "../utils/validation/authValidator";
+import { loginSchema } from "../utils/validation/authValidator";
 import { generateAccessToken, generateRefreshToken, hashToken } from "../utils/tokens";
 import { accessCookieOptions, refreshCookieOptions } from "../utils/cookies";
 import { reponseSucces, reponseErreur } from "../utils/reponses";
@@ -52,7 +52,6 @@ export async function login(req: Request, res: Response, next: NextFunction) {
       role: user.role,
       nom: user.nom,
       prenom: user.prenom,
-      mustChangePassword: user.mustChangePassword,
     });
   } catch (err) {
     next(err);
@@ -101,30 +100,6 @@ export async function logout(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-// POST /auth/changer-mot-de-passe — chacun change le SIEN, jamais celui
-// d'un autre compte. Partagee entre tous les roles, pas ADMIN seulement.
-export async function changerMotDePasse(req: AuthRequest, res: Response, next: NextFunction) {
-  try {
-    const data = changerMotDePasseSchema.parse(req.body);
-
-    const user = await prisma.user.findUnique({ where: { id: req.user!.userId } });
-    if (!user) return reponseErreur(res, "Compte introuvable", 404);
-
-    const ancienValide = await bcrypt.compare(data.ancienMotDePasse, user.motDePasse);
-    if (!ancienValide) return reponseErreur(res, "Ancien mot de passe incorrect", 401);
-
-    const nouveauHash = await bcrypt.hash(data.nouveauMotDePasse, 10);
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { motDePasse: nouveauHash, mustChangePassword: false },
-    });
-
-    return reponseSucces(res, { message: "Mot de passe change" });
-  } catch (err) {
-    next(err);
-  }
-}
-
 // GET /auth/moi — identite du compte connecte, jamais le hash du mot de passe.
 export async function moi(req: AuthRequest, res: Response, next: NextFunction) {
   try {
@@ -137,7 +112,6 @@ export async function moi(req: AuthRequest, res: Response, next: NextFunction) {
         nom: true,
         prenom: true,
         actif: true,
-        mustChangePassword: true,
       },
     });
 

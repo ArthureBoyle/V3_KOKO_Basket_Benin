@@ -6,16 +6,19 @@
 // jamais etre reecrite a la main.
 // ================================================
 import { z } from "zod";
-import { loginSchema, changerMotDePasseSchema } from "../utils/validation/authValidator";
+import { loginSchema } from "../utils/validation/authValidator";
 import {
   creerOrganisateurSchema,
   creerJoueurSchema,
   codeAdminSchema,
+  modifierCompteSchema,
+  modifierEmailReelSchema,
 } from "../utils/validation/compteValidator";
 import {
   creerTournoiSchema,
   modifierTournoiSchema,
   assignerJoueurSchema,
+  reattribuerTournoiSchema,
 } from "../utils/validation/tournoiValidator";
 import {
   creerEquipeSchema,
@@ -172,18 +175,6 @@ export const openapiDocument = {
         responses: { "200": succes("Profil basique"), "401": ref("NonAuthentifie") },
       },
     },
-    "/auth/changer-mot-de-passe": {
-      post: {
-        tags: ["Auth"],
-        summary: "Change son propre mot de passe",
-        requestBody: corps(changerMotDePasseSchema),
-        responses: {
-          "200": succes("Mot de passe change"),
-          "401": { description: "Ancien mot de passe incorrect ou non authentifie" },
-          "400": ref("DonneesInvalides"),
-        },
-      },
-    },
 
     // ============ COMPTES (ADMIN uniquement) ============
     "/comptes": {
@@ -233,6 +224,54 @@ export const openapiDocument = {
         responses: { "200": succes("Compte reactive"), "403": ref("AccesRefuse"), "404": ref("Introuvable") },
       },
     },
+    "/comptes/{id}": {
+      put: {
+        tags: ["Comptes"],
+        summary: "Modifie l'identite d'un compte (nom, prenom ; surnom/dateNaissance pour un joueur)",
+        description:
+          "Sans code admin. Schema strict : tout autre champ (emailReel, role, email...) -> 400. surnom/dateNaissance sur un organisateur -> 400. null efface surnom/dateNaissance. Compte ADMIN -> 403.",
+        parameters: [paramId("id", "id du compte User")],
+        requestBody: corps(modifierCompteSchema),
+        responses: {
+          "200": succes("Compte modifie"),
+          "400": ref("DonneesInvalides"),
+          "403": ref("AccesRefuse"),
+          "404": ref("Introuvable"),
+        },
+      },
+    },
+    "/comptes/{id}/email-reel": {
+      put: {
+        tags: ["Comptes"],
+        summary: "Modifie l'email reel d'un compte — exige le code secret admin",
+        description: "Mauvais code ou code absent -> 403. 5 codes refuses / 15 min par compte admin -> 429. Compte ADMIN -> 403.",
+        parameters: [paramId("id", "id du compte User")],
+        requestBody: corps(modifierEmailReelSchema.extend({ codeAdmin: codeAdminSchema.shape.codeAdmin })),
+        responses: {
+          "200": succes("Email reel modifie"),
+          "400": ref("DonneesInvalides"),
+          "403": ref("AccesRefuse"),
+          "404": ref("Introuvable"),
+          "429": ref("TropDeRequetes"),
+        },
+      },
+    },
+    "/comptes/{id}/reinitialiser-mot-de-passe": {
+      put: {
+        tags: ["Comptes"],
+        summary: "Reinitialise le mot de passe — exige le code secret admin",
+        description:
+          "Genere un nouveau mot de passe aleatoire de 12 caracteres, renvoye UNE seule fois (nouveauMotDePasse), que l'admin transmet hors app. Toutes les sessions (refresh tokens) du compte sont supprimees. Compte ADMIN -> 403.",
+        parameters: [paramId("id", "id du compte User")],
+        requestBody: corps(codeAdminSchema),
+        responses: {
+          "200": succes("Mot de passe reinitialise"),
+          "403": ref("AccesRefuse"),
+          "404": ref("Introuvable"),
+          "429": ref("TropDeRequetes"),
+        },
+      },
+    },
 
     // ============ TOURNOIS ============
     "/tournois": {
@@ -252,6 +291,8 @@ export const openapiDocument = {
       get: {
         tags: ["Tournois"],
         summary: "Tournois de l'organisateur connecte (jamais les ANNULE), filtrable par ?statut=",
+        description:
+          "Chaque tournoi porte compteurs: { equipes, joueurs (pool), scoresASaisir (matchs EN_RETARD : date passee, pas de score) }.",
         responses: { "200": succes("Liste"), "403": ref("AccesRefuse") },
       },
     },
@@ -265,6 +306,8 @@ export const openapiDocument = {
       put: {
         tags: ["Tournois"],
         summary: "Modifie un tournoi — dates/licences/classement reserves a l'ADMIN",
+        description:
+          "Nouvelles dates refusees (400) si elles chevauchent un autre tournoi non annule du meme organisateur.",
         parameters: [paramId("id", "id du tournoi")],
         requestBody: corps(modifierTournoiSchema),
         responses: {
@@ -287,8 +330,32 @@ export const openapiDocument = {
       put: {
         tags: ["Tournois"],
         summary: "Reactive un tournoi annule (ADMIN seulement)",
+        description:
+          "400 si, pendant l'annulation, l'organisateur a obtenu un autre tournoi sur la meme periode.",
         parameters: [paramId("id", "id du tournoi")],
-        responses: { "200": succes("Tournoi reactive"), "403": ref("AccesRefuse"), "404": ref("Introuvable") },
+        responses: {
+          "200": succes("Tournoi reactive"),
+          "400": { description: "Periode deja prise par un autre tournoi de l'organisateur" },
+          "403": ref("AccesRefuse"),
+          "404": ref("Introuvable"),
+        },
+      },
+    },
+    "/tournois/{id}/organisateur": {
+      put: {
+        tags: ["Tournois"],
+        summary: "Reattribue le tournoi a un autre organisateur — exige le code secret admin",
+        description:
+          "Equipes, pool, matchs et stats suivent le tournoi. L'ancien organisateur perd l'acces immediatement (404) et redevient libre sur la periode. 400 si : meme organisateur, compte non ORGANISATEUR ou desactive, chevauchement de dates chez le nouveau.",
+        parameters: [paramId("id", "id du tournoi")],
+        requestBody: corps(reattribuerTournoiSchema.extend({ codeAdmin: codeAdminSchema.shape.codeAdmin })),
+        responses: {
+          "200": succes("Tournoi reattribue"),
+          "400": ref("DonneesInvalides"),
+          "403": ref("AccesRefuse"),
+          "404": ref("Introuvable"),
+          "429": ref("TropDeRequetes"),
+        },
       },
     },
     "/tournois/{id}/joueurs": {
@@ -524,7 +591,7 @@ export const openapiDocument = {
     "/joueurs/moi/matchs": {
       get: {
         tags: ["Joueur"],
-        summary: "Calendrier des matchs de sa propre equipe pour un tournoi (?tournoiId= obligatoire)",
+        summary: "Tout le calendrier d'un tournoi ou le joueur est certifie (?tournoiId= obligatoire), meme sans equipe",
         responses: { "200": succes("Liste"), "400": { description: "tournoiId requis" }, "404": ref("Introuvable") },
       },
     },

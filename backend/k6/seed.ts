@@ -53,11 +53,11 @@ async function seed() {
   const hash = await bcrypt.hash(K6_MOT_DE_PASSE, 10);
 
   const admin = await prisma.user.create({
-    data: { email: K6_EMAIL_ADMIN, motDePasse: hash, role: "ADMIN", nom: "K6", prenom: "Admin", mustChangePassword: false },
+    data: { email: K6_EMAIL_ADMIN, motDePasse: hash, role: "ADMIN", nom: "K6", prenom: "Admin" },
   });
 
   const orga = await prisma.user.create({
-    data: { email: K6_EMAIL_ORGA, motDePasse: hash, role: "ORGANISATEUR", nom: "K6", prenom: "Orga", mustChangePassword: false },
+    data: { email: K6_EMAIL_ORGA, motDePasse: hash, role: "ORGANISATEUR", nom: "K6", prenom: "Orga" },
   });
 
   console.log("Creation du tournoi...");
@@ -86,7 +86,7 @@ async function seed() {
   const joueursParEquipe: number[][] = equipes.map(() => []);
   for (let i = 0; i < 40; i++) {
     const user = await prisma.user.create({
-      data: { email: `k6-joueur-${i}@koko.bj`, motDePasse: hash, role: "JOUEUR", nom: "K6", prenom: `J${i}`, mustChangePassword: false },
+      data: { email: `k6-joueur-${i}@koko.bj`, motDePasse: hash, role: "JOUEUR", nom: "K6", prenom: `J${i}` },
     });
     const joueur = await prisma.joueur.create({
       data: { idKoko: `K6-${String(i).padStart(4, "0")}`, nomLegal: "K6", prenom: `J${i}`, userId: user.id },
@@ -161,6 +161,13 @@ async function seed() {
   console.log(`tournoiId : ${tournoi.id}`);
   console.log(`equipes   : ${equipes.length}, matchs TERMINE : ${nombreMatchs}, joueurs : 40`);
   console.log("\nColle tournoiId dans k6/*.js (BASE_URL/TOURNOI_ID en haut du fichier).");
+}
+
+// Ce seed cree un ADMIN dont le mot de passe est ecrit en clair dans le
+// repo : il ne doit JAMAIS toucher une base de production.
+if (process.env.NODE_ENV === "production") {
+  console.error("✖ Seed k6 interdit en production (NODE_ENV=production)");
+  process.exit(1);
 }
 
 seed()

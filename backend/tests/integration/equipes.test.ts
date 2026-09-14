@@ -42,26 +42,26 @@ describe("Equipes + pool de licences", () => {
     const hash = await bcrypt.hash(MOT_DE_PASSE, 10);
 
     const admin = await prisma.user.create({
-      data: { email: EMAIL_ADMIN, motDePasse: hash, role: "ADMIN", nom: "S", prenom: "Admin", mustChangePassword: false },
+      data: { email: EMAIL_ADMIN, motDePasse: hash, role: "ADMIN", nom: "S", prenom: "Admin" },
     });
     adminId = admin.id;
     userIds.push(adminId);
 
     const orga1 = await prisma.user.create({
-      data: { email: EMAIL_ORGA1, motDePasse: hash, role: "ORGANISATEUR", nom: "S", prenom: "Orga1", mustChangePassword: false },
+      data: { email: EMAIL_ORGA1, motDePasse: hash, role: "ORGANISATEUR", nom: "S", prenom: "Orga1" },
     });
     orga1Id = orga1.id;
     userIds.push(orga1Id);
 
     const orga2 = await prisma.user.create({
-      data: { email: EMAIL_ORGA2, motDePasse: hash, role: "ORGANISATEUR", nom: "S", prenom: "Orga2", mustChangePassword: false },
+      data: { email: EMAIL_ORGA2, motDePasse: hash, role: "ORGANISATEUR", nom: "S", prenom: "Orga2" },
     });
     orga2Id = orga2.id;
     userIds.push(orga2Id);
 
     const creerJoueur = async (email: string, idKoko: string, prenom: string) => {
       const user = await prisma.user.create({
-        data: { email, motDePasse: hash, role: "JOUEUR", nom: "Joueur", prenom, mustChangePassword: false },
+        data: { email, motDePasse: hash, role: "JOUEUR", nom: "Joueur", prenom },
       });
       userIds.push(user.id);
       const joueur = await prisma.joueur.create({

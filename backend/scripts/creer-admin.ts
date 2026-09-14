@@ -61,10 +61,6 @@ async function main() {
       role: "ADMIN",
       nom,
       prenom,
-      // L'admin vient de choisir son mot de passe lui-meme : pas de
-      // changement force au premier login (contrairement aux comptes
-      // crees avec un mot de passe par defaut).
-      mustChangePassword: false,
     },
   });
 

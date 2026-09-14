@@ -57,7 +57,6 @@ model User {
   motDePasse         String          @db.VarChar(60)
   role               RoleUtilisateur
   actif              Boolean         @default(true)
-  mustChangePassword Boolean         @default(true)
   emailReel          String?         @db.VarChar(254)
   nom                String          @db.VarChar(100)
   prenom             String          @db.VarChar(100)
