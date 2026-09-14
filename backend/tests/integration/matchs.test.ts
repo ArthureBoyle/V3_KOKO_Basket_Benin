@@ -459,4 +459,57 @@ describe("Matchs", () => {
       expect(apres!.dateOriginale?.toISOString()).toBe(avant!.dateOriginale?.toISOString());
     });
   });
+  // Bug corrige : null devenait silencieusement le 1er janvier 1970.
+  describe("Validation des dates de match", () => {
+    const creer = (date: unknown) =>
+      request(app)
+        .post("/matchs")
+        .set("Cookie", cookieValue(cookiesOrga1, "accessToken"))
+        .send({ tournoiId: tournoi1Id, equipe1Id: equipeAId, equipe2Id: equipeBId, date, lieu: "Gymnase Dates", type: "Poule" });
+
+    it("creation avec date null -> 400", async () => {
+      expect((await creer(null)).status).toBe(400);
+    });
+
+    it("creation avec une heure sans fuseau (ambigue) -> 400", async () => {
+      expect((await creer("2027-08-05T18:00:00")).status).toBe(400);
+    });
+
+    it("creation avec un jour sans heure -> 400", async () => {
+      expect((await creer("2027-08-05")).status).toBe(400);
+    });
+
+    it("aucun match n'a ete cree par ces tentatives", async () => {
+      expect(await prisma.match.count({ where: { lieu: "Gymnase Dates" } })).toBe(0);
+    });
+
+    it("heure du Benin (+01:00) acceptee et enregistree au bon instant", async () => {
+      const res = await creer("2027-08-05T19:00:00+01:00");
+      expect(res.status).toBe(201);
+      matchIds.push(res.body.data.id);
+      const enBase = await prisma.match.findUnique({ where: { id: res.body.data.id } });
+      expect(enBase!.date.toISOString()).toBe("2027-08-05T18:00:00.000Z");
+    });
+
+    it("reprogrammer avec nouvelleDate null -> 400, date en base inchangee", async () => {
+      const reporte = await prisma.match.create({
+        data: {
+          tournoiId: tournoi1Id, equipe1Id: equipeAId, equipe2Id: equipeBId,
+          date: new Date("2027-08-09T18:00:00Z"), dateOriginale: new Date("2027-08-09T18:00:00Z"),
+          lieu: "Gymnase", type: "Poule", statut: "REPORTE",
+        },
+      });
+      matchIds.push(reporte.id);
+
+      const res = await request(app)
+        .put(`/matchs/${reporte.id}/reprogrammer`)
+        .set("Cookie", cookieValue(cookiesOrga1, "accessToken"))
+        .send({ nouvelleDate: null });
+      expect(res.status).toBe(400);
+
+      const apres = await prisma.match.findUnique({ where: { id: reporte.id } });
+      expect(apres!.date.toISOString()).toBe("2027-08-09T18:00:00.000Z");
+      expect(apres!.statut).toBe("REPORTE");
+    });
+  });
 });

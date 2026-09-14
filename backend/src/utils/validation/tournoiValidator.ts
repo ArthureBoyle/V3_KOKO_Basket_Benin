@@ -2,14 +2,16 @@
 // TOURNOI VALIDATOR
 // ================================================
 import { z } from "zod";
+import { jourSchema } from "./dates";
 
 export const creerTournoiSchema = z
   .object({
     nom: z.string().min(1).max(150),
     lieu: z.string().min(1).max(150),
     description: z.string().optional(),
-    dateDebut: z.coerce.date(),
-    dateFin: z.coerce.date(),
+    // Jours calendaires "YYYY-MM-DD" (voir dates.ts : null refuse).
+    dateDebut: jourSchema,
+    dateFin: jourSchema,
     organisateurId: z.number().int().positive(),
     // Licences payees / equipes autorisees — decidees par l'ADMIN a la
     // creation, jamais devinees ni par defaut : ca correspond a ce qui a
@@ -29,8 +31,8 @@ export const modifierTournoiSchema = z
     nom: z.string().min(1).max(150).optional(),
     lieu: z.string().min(1).max(150).optional(),
     description: z.string().optional(),
-    dateDebut: z.coerce.date().optional(),
-    dateFin: z.coerce.date().optional(),
+    dateDebut: jourSchema.optional(),
+    dateFin: jourSchema.optional(),
     // Reservees a l'ADMIN, meme porte que les dates — voir modifierTournoi.
     licencesMax: z.number().int().positive().optional(),
     equipesMax: z.number().int().positive().optional(),

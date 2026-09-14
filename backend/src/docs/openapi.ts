@@ -34,13 +34,15 @@ import { saisirStatSchema } from "../utils/validation/statValidator";
 
 // ---- petits helpers pour ne pas repeter la meme structure 50 fois ----
 
-// z.coerce.date() (dates de tournoi/match) n'a pas de representation
-// JSON Schema native -- toJSONSchema leve une erreur par defaut dessus.
-// On la representate explicitement en "string, format date-time" (ce
-// qu'elle est reellement une fois serialisee en JSON), plutot que de
-// laisser passer un {} vide (unrepresentable: "any" sans override).
+// io: "input" : un corps de requete se documente par ce que le client
+// ENVOIE. Les dates sont validees comme texte puis converties (voir
+// utils/validation/dates.ts) : en "input", la doc montre le texte attendu
+// ("format: date" ou "date-time"), pas la Date convertie. L'override ne
+// sert plus que de filet pour un eventuel z.date() nu, qui n'a pas de
+// representation JSON Schema native.
 function corps(schema: z.ZodTypeAny) {
   const jsonSchema = z.toJSONSchema(schema, {
+    io: "input",
     unrepresentable: "any",
     override: (ctx: any) => {
       if (ctx.zodSchema?._zod?.def?.type === "date") {

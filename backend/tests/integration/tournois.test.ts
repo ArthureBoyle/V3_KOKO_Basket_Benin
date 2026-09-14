@@ -605,4 +605,46 @@ describe("Tournois", () => {
       expect(enBase?.statut).toBe("ANNULE");
     });
   });
+  // Bug corrige : null devenait silencieusement le 1er janvier 1970.
+  describe("Validation des dates de tournoi", () => {
+    const corpsValide = {
+      nom: "Tournoi Dates", lieu: "Cotonou",
+      dateDebut: "2031-03-01", dateFin: "2031-03-05",
+      organisateurId: orga1Id, licencesMax: 10, equipesMax: 4,
+    };
+
+    const creer = (surcharge: Record<string, unknown>) =>
+      request(app)
+        .post("/tournois")
+        .set("Cookie", cookieValue(cookiesAdmin, "accessToken"))
+        .send({ ...corpsValide, organisateurId: orga1Id, ...surcharge });
+
+    it("creation avec dateDebut null -> 400", async () => {
+      expect((await creer({ dateDebut: null })).status).toBe(400);
+    });
+
+    it("creation avec un jour impossible (30 fevrier) -> 400", async () => {
+      expect((await creer({ dateDebut: "2031-02-30" })).status).toBe(400);
+    });
+
+    it("creation avec une heure au lieu d'un jour -> 400", async () => {
+      expect((await creer({ dateDebut: "2031-03-01T10:00:00Z" })).status).toBe(400);
+    });
+
+    it("aucun tournoi n'a ete cree par ces tentatives", async () => {
+      const enBase = await prisma.tournoi.count({ where: { nom: "Tournoi Dates" } });
+      expect(enBase).toBe(0);
+    });
+
+    it("modification avec dateDebut null -> 400, date en base inchangee", async () => {
+      const avant = await prisma.tournoi.findUnique({ where: { id: tournoiId } });
+      const res = await request(app)
+        .put(`/tournois/${tournoiId}`)
+        .set("Cookie", cookieValue(cookiesAdmin, "accessToken"))
+        .send({ dateDebut: null });
+      expect(res.status).toBe(400);
+      const apres = await prisma.tournoi.findUnique({ where: { id: tournoiId } });
+      expect(apres!.dateDebut.toISOString()).toBe(avant!.dateDebut.toISOString());
+    });
+  });
 });

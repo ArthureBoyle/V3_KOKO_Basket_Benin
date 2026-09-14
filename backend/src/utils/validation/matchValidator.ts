@@ -2,13 +2,15 @@
 // MATCH VALIDATOR
 // ================================================
 import { z } from "zod";
+import { instantSchema } from "./dates";
 
 export const creerMatchSchema = z
   .object({
     tournoiId: z.number().int().positive(),
     equipe1Id: z.number().int().positive(),
     equipe2Id: z.number().int().positive(),
-    date: z.coerce.date(),
+    // Date ET heure, fuseau obligatoire (voir dates.ts : null refuse).
+    date: instantSchema,
     lieu: z.string().min(1).max(150),
     type: z.string().min(1).max(50),
     arbitre: z.string().max(100).optional(),
@@ -35,7 +37,7 @@ export const saisirScoreSchema = z.object({
 });
 
 export const reprogrammerMatchSchema = z.object({
-  nouvelleDate: z.coerce.date(),
+  nouvelleDate: instantSchema,
 });
 
 export type CreerMatchInput = z.infer<typeof creerMatchSchema>;

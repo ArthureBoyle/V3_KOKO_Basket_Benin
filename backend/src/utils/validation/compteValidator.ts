@@ -5,6 +5,7 @@
 // passe par defaut genere cote serveur).
 // ================================================
 import { z } from "zod";
+import { jourSchema } from "./dates";
 
 export const creerOrganisateurSchema = z.object({
   nom: z.string().min(1),
@@ -14,13 +15,8 @@ export const creerOrganisateurSchema = z.object({
 
 // Date de naissance d'un joueur : l'admin certifie son age, elle est
 // donc OBLIGATOIRE a la creation. Jamais dans le futur, jamais avant 1900
-// (faute de frappe du type "0199-05-17").
-// Texte "YYYY-MM-DD" valide D'ABORD (z.iso.date), converti en Date
-// ENSUITE : un z.coerce.date() seul accepterait null (new Date(null) =
-// 1er janvier 1970) et ecraserait la vraie date sans erreur.
-const dateNaissanceSchema = z.iso
-  .date()
-  .pipe(z.coerce.date())
+// (faute de frappe du type "0199-05-17"). Format "YYYY-MM-DD" (dates.ts).
+const dateNaissanceSchema = jourSchema
   .refine((d) => d <= new Date(), { message: "La date de naissance ne peut pas etre dans le futur" })
   .refine((d) => d >= new Date("1900-01-01"), { message: "Date de naissance invalide" });
 
