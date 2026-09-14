@@ -1,0 +1,130 @@
+/* ================================================
+   KOKO V3 — styles globaux
+   Tokens des 3 themes (docs/KOKO_Palettes_Retenues.md, contrastes WCAG
+   corriges), cablage Tailwind v4, typographie Geist, garde-fou mouvement
+   reduit (docs/KOKO_Design_Motion_System.pdf).
+   ================================================ */
+@import 'tailwindcss';
+
+/* ---- Themes : variables pilotees par l'attribut data-theme ----
+   ":root" seul porte aussi le violet, au cas ou le script anti-flash de
+   index.html n'aurait pas tourne. */
+:root,
+:root[data-theme='violet'] {
+  --bg: #08080a;
+  --surface: #131317;
+  --elevated: #1c1c21;
+  --border: #26262c;
+  --text: #fafafa;
+  --text-mute: #a1a1aa;
+  --primary: #6e56cf;
+  --on-primary: #fafafa;
+  --primary-text: #9281e6;
+  --secondary: #71717a;
+  --accent: #30a46c;
+  --success: #30a46c;
+  --warning: #c89b3c;
+  --danger: #d66a70;
+}
+
+:root[data-theme='terre'] {
+  --bg: #14120e;
+  --surface: #1d1a15;
+  --elevated: #26221b;
+  --border: #2f2a22;
+  --text: #efe8dc;
+  --text-mute: #9c9689;
+  --primary: #d4b483;
+  --on-primary: #14120e;
+  --primary-text: #d4b483;
+  --secondary: #7a7267;
+  --accent: #b08a63;
+  --success: #6fa08e;
+  --warning: #c9a959;
+  --danger: #c9735a;
+}
+
+:root[data-theme='menthe'] {
+  --bg: #0b0f0e;
+  --surface: #131a18;
+  --elevated: #1b2422;
+  --border: #24302d;
+  --text: #e8f0ed;
+  --text-mute: #8a9a95;
+  --primary: #2dffb0;
+  --on-primary: #0b0f0e;
+  --primary-text: #2dffb0;
+  --secondary: #5f6f6a;
+  --accent: #8a84ff;
+  --success: #a3e635;
+  --warning: #e8c547;
+  --danger: #ff5c7a;
+}
+
+/* ---- Cablage Tailwind : "inline" = la classe lit directement var(--x),
+   donc changer de theme repeint sans recompiler ni re-render React. ---- */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-elevated: var(--elevated);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-text-mute: var(--text-mute);
+  --color-primary: var(--primary);
+  --color-on-primary: var(--on-primary);
+  --color-primary-text: var(--primary-text);
+  --color-secondary: var(--secondary);
+  --color-accent: var(--accent);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+}
+
+/* ---- Typographie : Geist (Fontsource, servie localement), tailles en rem,
+   interlignage 1.4 texte dense / 1.6 corps / 1.2 titres. ---- */
+@theme {
+  --font-sans: 'Geist Variable', system-ui, sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, monospace;
+
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1.4;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.4;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.6;
+  --text-base: 0.9375rem;
+  --text-base--line-height: 1.6;
+  --text-lg: 1.0625rem;
+  --text-lg--line-height: 1.6;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.2;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 1.2;
+  --text-3xl: 2rem;
+  --text-3xl--line-height: 1.2;
+}
+
+@layer base {
+  body {
+    @apply bg-bg font-sans text-base text-text antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--primary-text);
+    outline-offset: 2px;
+  }
+}
+
+/* ---- Garde-fou obligatoire : un utilisateur qui a coupe les animations
+   dans son systeme voit une interface statique. Ne couvre QUE le CSS :
+   les animations JavaScript lisent useReducedMotion(). ---- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

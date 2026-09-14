@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <title>KOKO</title>
+    <!--
+      Theme applique AVANT le premier affichage : sans ce script, la page
+      s'afficherait une fraction de seconde avec le theme par defaut puis
+      changerait (flash). Memes valeurs et meme cle que src/theme/theme.ts.
+    -->
+    <script>
+      try {
+        var t = localStorage.getItem('koko-theme')
+        document.documentElement.dataset.theme =
+          t === 'terre' || t === 'menthe' ? t : 'violet'
+      } catch (e) {
+        document.documentElement.dataset.theme = 'violet'
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
