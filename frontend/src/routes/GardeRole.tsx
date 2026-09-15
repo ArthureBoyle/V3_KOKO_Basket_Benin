@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router'
-import { EcranChargement, EcranErreur } from '../components/EcranEtat'
+import { EcranChargementEspace, EcranErreur } from '../components/EcranEtat'
 import { ACCUEIL_PAR_ROLE, messageErreurSession, useSession } from '../features/auth/session'
 import type { Role } from '../types/api'
 
@@ -10,7 +10,7 @@ export function GardeRole({ role, children }: { role: Role; children: ReactNode 
   const { data: session, isPending, isError, error, refetch } = useSession()
   const location = useLocation()
 
-  if (isPending) return <EcranChargement />
+  if (isPending) return <EcranChargementEspace />
   if (isError) return <EcranErreur message={messageErreurSession(error)} onReessayer={() => refetch()} />
 
   if (!session) {

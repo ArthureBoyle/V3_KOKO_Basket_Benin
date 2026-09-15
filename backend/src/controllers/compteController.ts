@@ -128,8 +128,12 @@ export async function getCompteById(req: Request, res: Response, next: NextFunct
     const { joueur, tournois, ...compte } = user;
 
     if (!joueur) {
+      // joueur explicitement a null (jamais omis) : le front distingue les
+      // deux branches du compte via `compte.joueur !== null", une cle
+      // absente serait `undefined`, pas `null`, et tromperait ce test.
       return reponseSucces(res, {
         ...compte,
+        joueur: null,
         tournois: tournois.map((tournoi) => ({ ...tournoi, statut: calculerStatutTournoi(tournoi) })),
       });
     }

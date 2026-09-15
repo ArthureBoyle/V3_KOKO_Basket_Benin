@@ -29,6 +29,17 @@ export async function creerEquipe(req: AuthRequest, res: Response, next: NextFun
       return reponseErreur(res, "Nombre maximal d'equipes atteint pour ce tournoi", 400);
     }
 
+    // Pas de contrainte unique en base (nom n'est pas une cle naturelle
+    // globale, seulement au sein d'un tournoi) : verifie ici, insensible
+    // a la casse/aux espaces, pour eviter deux equipes identiques dans le
+    // meme tournoi (source de confusion cote UI).
+    const doublon = await prisma.equipe.findFirst({
+      where: { tournoiId: data.tournoiId, nom: { equals: data.nom.trim(), mode: "insensitive" } },
+    });
+    if (doublon) {
+      return reponseErreur(res, "Une equipe porte deja ce nom dans ce tournoi", 400);
+    }
+
     const equipe = await prisma.equipe.create({
       data: {
         nom: data.nom,

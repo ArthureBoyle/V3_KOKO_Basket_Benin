@@ -30,6 +30,15 @@ const formatHeure = new Intl.DateTimeFormat('fr-FR', {
   timeZone: FUSEAU_BENIN,
 })
 
+// Version compacte de formaterDateHeure (mois abrege, sans "a") : carte
+// de match, ou la date rejoint statut/poule/lieu sur une seule ligne.
+const formatJourCourtBenin = new Intl.DateTimeFormat('fr-FR', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  timeZone: FUSEAU_BENIN,
+})
+
 const formatNombre = new Intl.NumberFormat('fr-FR')
 
 // Jour calendaire (tournoi, date de naissance). Le backend renvoie minuit
@@ -43,12 +52,30 @@ export function formaterDateHeure(valeur: string | Date): string {
   return formatDateHeure.format(new Date(valeur))
 }
 
+// Jour abrege d'un match ("15 janv. 2026"), a l'heure du Benin (un match
+// est un instant precis, contrairement au jour calendaire d'un tournoi).
+export function formaterJourMatch(valeur: string | Date): string {
+  return formatJourCourtBenin.format(new Date(valeur))
+}
+
+// Heure seule d'un match ("18:00"), a l'heure du Benin.
+export function formaterHeureMatch(valeur: string | Date): string {
+  return formatHeure.format(new Date(valeur))
+}
+
 export function formaterNombre(nombre: number): string {
   return formatNombre.format(nombre)
 }
 
 export function formaterAge(age: number): string {
   return `${age} an${age > 1 ? 's' : ''}`
+}
+
+// Nom affiche d'un joueur (surnom entre guillemets francais s'il existe) :
+// utilise partout ou un joueur est identifie a l'ecran (RechercheJoueur,
+// OngletLicences...), pour ne jamais retaper cette regle a chaque endroit.
+export function formaterNomJoueur(joueur: { nom: string; prenom: string; surnom: string | null }): string {
+  return `${joueur.prenom} ${joueur.nom}${joueur.surnom ? ` « ${joueur.surnom} »` : ''}`
 }
 
 // Texte a cote du bouton de rafraichissement.

@@ -15,11 +15,13 @@ export default defineConfig(({ command, mode }) => {
 
   return {
     plugins: [react(), tailwindcss()],
-    // Port FIXE : le backend n'autorise (CORS) que http://localhost:5173.
-    // strictPort : si 5173 est deja pris, Vite s'arrete au lieu de passer
-    // en silence sur 5174 — ou toutes les requetes seraient refusees.
-    server: { port: 5173, strictPort: true },
-    preview: { port: 5173, strictPort: true },
+    // Port FIXE : le backend n'autorise (CORS) que http://localhost:5273
+    // (change le 2026-09-15, conflit de port avec un autre projet local
+    // sur 5173). strictPort : si 5273 est deja pris, Vite s'arrete au
+    // lieu de passer en silence sur un autre port — ou toutes les
+    // requetes seraient refusees.
+    server: { port: 5273, strictPort: true },
+    preview: { port: 5273, strictPort: true },
     test: { environment: 'node' },
   }
 })

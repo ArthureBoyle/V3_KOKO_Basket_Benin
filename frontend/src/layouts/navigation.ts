@@ -8,7 +8,14 @@ export interface EntreeNavigation {
 // Sections de la sidebar par role. Une section n'est ajoutee ici que
 // lorsque son ecran existe (jamais de lien vers une page vide).
 export const NAVIGATION_PAR_ROLE: Record<Role, readonly EntreeNavigation[]> = {
-  ADMIN: [{ libelle: 'Accueil', chemin: '/admin' }],
-  ORGANISATEUR: [{ libelle: 'Accueil', chemin: '/organisateur' }],
+  ADMIN: [
+    { libelle: 'Accueil', chemin: '/admin' },
+    { libelle: 'Comptes', chemin: '/admin/comptes' },
+    { libelle: 'Tournois', chemin: '/admin/tournois' },
+  ],
+  ORGANISATEUR: [
+    { libelle: 'Accueil', chemin: '/organisateur' },
+    { libelle: 'Mes tournois', chemin: '/organisateur/tournois' },
+  ],
   JOUEUR: [{ libelle: 'Accueil', chemin: '/joueur' }],
 }

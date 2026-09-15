@@ -22,9 +22,9 @@ export function Ballon({ mode = 'arret', className = '', onFinTour }: BallonProp
   return (
     <svg viewBox="0 0 32 32" aria-hidden="true" className={className}>
       <defs>
-        <radialGradient id={idDegrade} cx="34%" cy="28%" r="75%">
+        <radialGradient id={idDegrade} cx="32%" cy="26%" r="68%">
           <stop offset="0%" style={{ stopColor: 'var(--ballon-clair)' }} />
-          <stop offset="60%" style={{ stopColor: 'var(--ballon)' }} />
+          <stop offset="45%" style={{ stopColor: 'var(--ballon)' }} />
           <stop offset="100%" style={{ stopColor: 'var(--ballon-ombre)' }} />
         </radialGradient>
         <clipPath id={idDecoupe}>

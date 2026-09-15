@@ -6,10 +6,10 @@ Desktop-first. Le backend fait foi : voir `backend/` et sa doc Swagger (`/docs`)
 ## Démarrer
 
 ```bash
-# 1. le backend doit tourner sur http://localhost:4000
+# 1. le backend doit tourner sur http://localhost:4100
 cd backend && npm run dev
 
-# 2. le front, sur http://localhost:5173 (port fixe : seule origine autorisée par le CORS du backend)
+# 2. le front, sur http://localhost:5273 (port fixe : seule origine autorisée par le CORS du backend)
 cd frontend && npm install && npm run dev
 ```
 
@@ -18,7 +18,7 @@ L'adresse du backend vient de `VITE_API_URL` (`.env.development` en dev, voir `.
 **Build** : `npm run build` **refuse de tourner** sans `VITE_API_URL` (un build sans adresse d'API ne peut appeler aucune route). `.env.development` ne sert qu'à `npm run dev`. Pour tester le build de production en local :
 
 ```bash
-VITE_API_URL=http://localhost:4000 npm run build && npm run preview
+VITE_API_URL=http://localhost:4100 npm run build && npm run preview
 ```
 
 ## Scripts
@@ -27,7 +27,7 @@ VITE_API_URL=http://localhost:4000 npm run build && npm run preview
 |----------|------|
 | `npm run dev` | serveur de développement |
 | `npm run build` | vérification TypeScript (`tsc -b`) puis build de production |
-| `npm run preview` | sert le build de production sur le port 5173 |
+| `npm run preview` | sert le build de production sur le port 5273 |
 | `npm test` | tests unitaires (Vitest) |
 | `npm run lint` | lint (oxlint) |
 

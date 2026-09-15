@@ -13,7 +13,7 @@ import http from "k6/http";
 import { check } from "k6";
 import { Counter } from "k6/metrics";
 
-const BASE_URL = "http://localhost:4000";
+const BASE_URL = "http://localhost:4100";
 
 const succes200 = new Counter("login_succes_200");
 const bloques429 = new Counter("login_bloques_429");

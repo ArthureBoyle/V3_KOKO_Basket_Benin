@@ -4,11 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="dark" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>KOKO</title>
     <!--
-      Theme applique AVANT le premier affichage : sans ce script, la page
-      s'afficherait une fraction de seconde avec le theme par defaut puis
-      changerait (flash). Memes valeurs et meme cle que src/theme/theme.ts.
+      Theme ET commutateur "animations reduites" appliques AVANT le premier
+      affichage, pour le meme motif : sans ca, la page s'afficherait une
+      fraction de seconde dans l'etat par defaut puis changerait (flash).
+      Memes valeurs et memes cles que src/theme/theme.ts et
+      src/theme/preferences.ts.
     -->
     <script>
       try {
@@ -17,6 +20,12 @@
           t === 'terre' || t === 'menthe' ? t : 'violet'
       } catch (e) {
         document.documentElement.dataset.theme = 'violet'
+      }
+      try {
+        document.documentElement.dataset.animationsReduites =
+          localStorage.getItem('koko-animations-reduites') === 'oui' ? 'oui' : 'non'
+      } catch (e) {
+        document.documentElement.dataset.animationsReduites = 'non'
       }
     </script>
   </head>

@@ -11,9 +11,10 @@ services:
       POSTGRES_PASSWORD: koko_local_dev
       POSTGRES_DB: koko
     ports:
-      # 5433 et non 5432 : si tu as déjà un PostgreSQL local, les deux
-      # cohabitent sans conflit.
-      - "5433:5432"
+      # 5533 (anciennement 5433, change le 2026-09-15 : conflit avec un
+      # autre conteneur Postgres local sur 5433) : si tu as deja un
+      # PostgreSQL local, les deux cohabitent sans conflit.
+      - "5533:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
 

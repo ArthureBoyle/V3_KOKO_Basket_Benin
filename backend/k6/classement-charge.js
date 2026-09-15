@@ -10,7 +10,7 @@
 import http from "k6/http";
 import { check, sleep } from "k6";
 
-const BASE_URL = "http://localhost:4000";
+const BASE_URL = "http://localhost:4100";
 const TOURNOI_ID = __ENV.TOURNOI_ID || "211"; // colle l'id renvoye par seed.ts, ou -e TOURNOI_ID=xxx
 
 export const options = {

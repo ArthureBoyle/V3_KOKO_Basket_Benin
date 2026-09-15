@@ -105,8 +105,18 @@
 }
 
 @layer base {
+  /* overscroll-behavior: none sur html ET body : sans ca, un scroll a
+     deux doigts (trackpad) peut faire "rebondir" toute la PAGE (au-dela
+     de notre h-screen overflow-hidden, un pur comportement du
+     navigateur) sur certains moteurs/OS (constate sur Edge/Windows,
+     jamais sur Chrome) meme quand rien ne deborde reellement — seul
+     <main> doit jamais defiler. */
+  html {
+    @apply overscroll-none;
+  }
+
   body {
-    @apply bg-bg font-sans text-base text-text antialiased;
+    @apply overscroll-none bg-bg font-sans text-base text-text antialiased;
   }
 
   :focus-visible {
@@ -119,9 +129,11 @@
    themes. Seule couleur hors tokens de theme : c'est une illustration, pas
    un element d'interface. Definie une fois ici, jamais en dur dans le SVG. ---- */
 :root {
-  --ballon-clair: #f4a259;
+  /* Contraste fort entre le reflet et l'ombre : un degrade trop doux
+     (versions precedentes) se voyait a peine et le ballon semblait plat. */
+  --ballon-clair: #ffd9a8;
   --ballon: #d9642b;
-  --ballon-ombre: #8a3a12;
+  --ballon-ombre: #5c2408;
   --ballon-couture: #2a1206;
 }
 
@@ -168,6 +180,33 @@
   }
 }
 
+/* Balayage de lumiere (motion system, section 6bis) : une bande fine
+   traverse les lignes d'un tableau pendant une actualisation en arriere-
+   plan (donnees deja affichees, juste re-verifiees) — le squelette, lui,
+   remplace le contenu ; ceci le laisse visible. */
+@keyframes koko-balayage {
+  from {
+    transform: translateX(-120%);
+  }
+  to {
+    transform: translateX(220%);
+  }
+}
+
+/* Remplissage d'un bouton pendant une requete en cours (ex. bascule de
+   statut d'un compte) : contrairement a .koko-cascade, "from" ET "to"
+   sont explicites ici, donc "forwards" ne fige rien d'imprevu — il garde
+   juste le remplissage plein jusqu'a ce que la requete finisse et que le
+   calque (rendu conditionnellement) soit retire du DOM. */
+@keyframes koko-remplissage {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
 @layer components {
   /* Squelette : reflet sur background-position (pas du GPU pur, d'ou le
      plafond de 10 lignes dans SqueletteLignes). */
@@ -203,15 +242,145 @@
   .notification {
     animation: koko-glisse 0.3s cubic-bezier(0.2, 0.8, 0.3, 1);
   }
+
+  .balayage-lumiere {
+    animation: koko-balayage 1.4s linear infinite;
+  }
+
+  .koko-remplissage {
+    transform-origin: left;
+    animation: koko-remplissage 0.6s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+  }
+
+  /* Cascade d'apparition (hooks/useCascade.ts) : delai pose en style
+     inline (animationDelay), l'animation elle-meme est ici.
+     PAS de "forwards" ni d'opacite/transform en base sur la classe : comme
+     .notification et .dialogue[open], la seule keyframe ("from") suffit,
+     l'etat de repos (visible, sans decalage) vient des styles normaux de
+     la carte elle-meme. Sinon "forwards" figerait la carte invisible : le
+     seul style non anime pour opacity/transform ICI redeviendrait la
+     valeur de "from" elle-meme, et l'animation n'irait plus nulle part. */
+  .koko-cascade {
+    animation: koko-apparition 0.45s cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+
+  /* Halo + elevation du bouton principal, en color-mix() a partir du
+     token --primary (jamais une couleur figee) : correct dans les 3
+     themes, y compris violet qui a servi de reference visuelle. */
+  .bouton-eleve {
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--primary) 35%, transparent),
+      0 0 16px -6px color-mix(in oklab, var(--primary) 70%, transparent);
+  }
+  .bouton-eleve:hover {
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--primary) 60%, transparent),
+      0 0 22px -4px color-mix(in oklab, var(--primary) 90%, transparent);
+  }
+
+  /* Remplissage horizontal au survol/focus ("wipe") : un calque plein
+     ecrase a gauche (scaleX(0)) qui se deploie devant le contenu. scaleX
+     UNIQUEMENT, jamais width — width force un recalcul de mise en page a
+     chaque frame, scaleX ne coute rien au GPU. --on-primary (pas blanc en
+     dur, meme regle que Bouton.tsx) : le texte doit rester lisible sur
+     les 3 themes une fois le calque plein derriere lui — sa valeur est
+     deja pensee pour contraster avec une couleur vive quelconque du
+     theme, pas seulement --primary, donc reutilisable telle quelle pour
+     la variante danger. */
+  .effet-remplissage {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+  }
+  .effet-remplissage::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.3, 1);
+    z-index: 0;
+  }
+  .effet-remplissage:hover::before,
+  .effet-remplissage:focus-visible::before {
+    transform: scaleX(1);
+  }
+  .effet-remplissage-primaire::before {
+    background: var(--primary);
+  }
+  .effet-remplissage-primaire:hover,
+  .effet-remplissage-primaire:focus-visible {
+    border-color: var(--primary);
+  }
+  .effet-remplissage-danger::before {
+    background: var(--danger);
+  }
+  .effet-remplissage-danger:hover,
+  .effet-remplissage-danger:focus-visible {
+    border-color: var(--danger);
+  }
+  /* Doit envelopper TOUT le contenu lisible d'un .effet-remplissage :
+     sans son z-index, le texte reste peint sous le calque (avant lui
+     dans l'ordre de peinture normal) et disparait au survol. */
+  .contenu-remplissage {
+    position: relative;
+    z-index: 1;
+    transition: color 0.2s;
+  }
+  .effet-remplissage:hover .contenu-remplissage,
+  .effet-remplissage:focus-visible .contenu-remplissage {
+    color: var(--on-primary);
+  }
+
+  /* Remplissage DIRECTIONNEL (menu lateral) : meme mecanique que
+     .effet-remplissage, mais l'origine vient de la variable posee par
+     useEffetDirectionnel (cote d'entree du curseur), pas d'un cote fixe.
+     Fond --elevated (pas --primary) : ce sont des liens de navigation
+     frequents, pas des actions — un remplissage plein violet serait trop
+     present ; --elevated est deja le fond de l'etat "actif" existant, le
+     survol en devient un apercu coherent, pas une couleur en plus. */
+  .effet-remplissage-directionnel {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+  }
+  .effet-remplissage-directionnel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--elevated);
+    transform: scaleX(0);
+    transform-origin: var(--origine-remplissage, left);
+    transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.3, 1);
+    z-index: 0;
+  }
+  .effet-remplissage-directionnel:hover::before,
+  .effet-remplissage-directionnel:focus-visible::before {
+    transform: scaleX(1);
+  }
 }
 
 /* ---- Garde-fou obligatoire : un utilisateur qui a coupe les animations
    dans son systeme voit une interface statique. Ne couvre QUE le CSS :
-   les animations JavaScript lisent useReducedMotion(). ---- */
+   les animations JavaScript lisent useReducedMotion(). Le commutateur
+   manuel du menu du compte (theme/preferences.ts) applique EXACTEMENT la
+   meme regle via l'attribut data-animations-reduites, pour les PC faibles
+   dont le systeme ne l'a pas active. ---- */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+:root[data-animations-reduites='oui'] {
+  & *,
+  & *::before,
+  & *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;

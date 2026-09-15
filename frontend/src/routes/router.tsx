@@ -1,8 +1,13 @@
 import { createBrowserRouter, type RouteObject } from 'react-router'
 import { AccueilAdmin } from '../features/admin/AccueilAdmin'
 import { PageConnexion } from '../features/auth/PageConnexion'
+import { FicheCompte } from '../features/comptes/FicheCompte'
+import { ListeComptes } from '../features/comptes/ListeComptes'
 import { AccueilJoueur } from '../features/joueur/AccueilJoueur'
 import { AccueilOrganisateur } from '../features/organisateur/AccueilOrganisateur'
+import { ListeMesTournois } from '../features/organisateur/ListeMesTournois'
+import { FicheTournoi } from '../features/tournois/FicheTournoi'
+import { ListeTournois } from '../features/tournois/ListeTournois'
 import { LayoutEspace } from '../layouts/LayoutEspace'
 import { GardeRole } from './GardeRole'
 import { PageIntrouvable } from './PageIntrouvable'
@@ -34,7 +39,13 @@ export const router = createBrowserRouter([
         <LayoutEspace />
       </GardeRole>
     ),
-    children: [{ index: true, element: <AccueilAdmin /> }],
+    children: [
+      { index: true, element: <AccueilAdmin /> },
+      { path: 'comptes', element: <ListeComptes /> },
+      { path: 'comptes/:id', element: <FicheCompte /> },
+      { path: 'tournois', element: <ListeTournois /> },
+      { path: 'tournois/:id', element: <FicheTournoi /> },
+    ],
   },
   {
     path: '/organisateur',
@@ -43,7 +54,11 @@ export const router = createBrowserRouter([
         <LayoutEspace />
       </GardeRole>
     ),
-    children: [{ index: true, element: <AccueilOrganisateur /> }],
+    children: [
+      { index: true, element: <AccueilOrganisateur /> },
+      { path: 'tournois', element: <ListeMesTournois /> },
+      { path: 'tournois/:id', element: <FicheTournoi /> },
+    ],
   },
   {
     path: '/joueur',

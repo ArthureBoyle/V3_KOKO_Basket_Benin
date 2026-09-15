@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!--
+    Favicon statique : meme dessin que components/ui/Ballon.tsx (degrade
+    radial + coutures dans un clipPath circulaire), mais un fichier a
+    part, sans animation et avec les couleurs figees. Un favicon est
+    charge par le navigateur hors de la page, il n'a pas acces aux
+    variables CSS de l'app. Ces 4 couleurs de ballon sont deja
+    theme invariantes cote app (definies une seule fois, pas par theme) :
+    les reprendre ici ne casse donc rien d'un theme a l'autre.
+  -->
+  <defs>
+    <radialGradient id="dg" cx="32%" cy="26%" r="68%">
+      <stop offset="0%" stop-color="#ffd9a8" />
+      <stop offset="45%" stop-color="#d9642b" />
+      <stop offset="100%" stop-color="#5c2408" />
+    </radialGradient>
+    <clipPath id="dc">
+      <circle cx="16" cy="16" r="14" />
+    </clipPath>
+  </defs>
+  <circle cx="16" cy="16" r="14" fill="url(#dg)" />
+  <g clip-path="url(#dc)">
+    <g fill="none" stroke="#2a1206" stroke-width="1.2">
+      <line x1="2" y1="16" x2="30" y2="16" />
+      <line x1="16" y1="2" x2="16" y2="30" />
+      <path d="M6 5 C 12 11, 12 21, 6 27" />
+      <path d="M26 5 C 20 11, 20 21, 26 27" />
+    </g>
+  </g>
+</svg>
