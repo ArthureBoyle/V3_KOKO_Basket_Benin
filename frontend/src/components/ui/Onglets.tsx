@@ -44,8 +44,13 @@ export function Onglets({ onglets, actif, onChanger, libelle, variante = 'soulig
 
   const classesConteneur =
     variante === 'segmentee'
-      ? 'flex gap-1 rounded-lg border border-border bg-elevated p-1'
-      : 'flex gap-1 border-b border-border'
+      ? // max-md:overflow-x-auto : un tournoi a 6 onglets ("Statistiques"
+        // compris) ne rentre plus a la largeur d'un telephone une fois
+        // chaque bouton force a garder sa largeur naturelle (voir
+        // max-md:flex-none plus bas) — la rangee defile a la place de
+        // clipper silencieusement les derniers onglets.
+        'flex gap-1 rounded-lg border border-border bg-elevated p-1 max-md:overflow-x-auto'
+      : 'flex gap-1 border-b border-border max-md:overflow-x-auto'
 
   return (
     <div role="tablist" aria-label={libelle} onKeyDown={clavier} className={classesConteneur}>
@@ -53,10 +58,10 @@ export function Onglets({ onglets, actif, onChanger, libelle, variante = 'soulig
         const estActif = onglet.id === actif
         const classes =
           variante === 'segmentee'
-            ? `flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150 ${
+            ? `flex-1 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors duration-150 max-md:flex-none ${
                 estActif ? 'bg-primary text-on-primary' : 'text-text-mute hover:text-text'
               }`
-            : `-mb-px border-b-2 px-3 py-2 text-sm transition-colors duration-150 ${
+            : `-mb-px border-b-2 px-3 py-2 text-sm whitespace-nowrap transition-colors duration-150 ${
                 estActif ? 'border-primary text-text' : 'border-transparent text-text-mute hover:text-text'
               }`
         return (

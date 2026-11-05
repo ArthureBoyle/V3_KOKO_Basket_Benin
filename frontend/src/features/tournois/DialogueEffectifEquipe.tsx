@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { useNotifier } from '../../components/notifications/contexte'
 import { Bouton } from '../../components/ui/Bouton'
 import { Champ, ChampSelect } from '../../components/ui/Champ'
@@ -6,8 +6,15 @@ import { Dialogue } from '../../components/ui/Dialogue'
 import { EtatVide } from '../../components/ui/EtatVide'
 import { SqueletteLignes } from '../../components/ui/Squelette'
 import { messageErreurApi } from '../../lib/erreurs'
+import { urlImage } from '../../lib/format'
 import type { JoueurPoolTournoi } from '../../types/api'
-import { useAjouterJoueurEquipe, useEquipe, useRetirerJoueurEquipe, useSupprimerEquipe } from './apiEquipes'
+import {
+  useAjouterJoueurEquipe,
+  useEquipe,
+  useRetirerJoueurEquipe,
+  useSupprimerEquipe,
+  useUploaderLogoEquipe,
+} from './apiEquipes'
 
 interface Props {
   equipeId: number | null
@@ -29,7 +36,20 @@ export function DialogueEffectifEquipe({ equipeId, tournoiId, pool, onFermer }: 
   const ajouter = useAjouterJoueurEquipe(equipeId ?? -1, tournoiId)
   const retirer = useRetirerJoueurEquipe(equipeId ?? -1, tournoiId)
   const supprimer = useSupprimerEquipe(tournoiId)
+  const uploaderLogo = useUploaderLogoEquipe(equipeId ?? -1, tournoiId)
   const notifier = useNotifier()
+  const entreeFichier = useRef<HTMLInputElement>(null)
+
+  const choisirLogo = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fichier = e.target.files?.[0]
+    e.target.value = ''
+    if (!fichier) return
+    setErreur(null)
+    uploaderLogo.mutate(fichier, {
+      onSuccess: () => notifier('Logo mis à jour', 'succes'),
+      onError: (err) => setErreur(messageErreurApi(err)),
+    })
+  }
 
   const fermer = () => {
     setJoueurId('')
@@ -79,6 +99,36 @@ export function DialogueEffectifEquipe({ equipeId, tournoiId, pool, onFermer }: 
         </p>
       ) : (
         <div className="flex flex-col gap-5">
+          <div className="flex items-center gap-4 border-b border-border pb-5">
+            <div
+              className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border"
+              style={{ backgroundColor: equipe.logo ? undefined : equipe.couleur }}
+            >
+              {equipe.logo ? (
+                <img src={urlImage(equipe.logo)} alt="" className="size-full object-cover" />
+              ) : (
+                <span aria-hidden="true" className="size-3 rounded-full bg-elevated" />
+              )}
+            </div>
+            <div>
+              <input
+                ref={entreeFichier}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={choisirLogo}
+              />
+              <Bouton
+                variante="secondaire"
+                onClick={() => entreeFichier.current?.click()}
+                disabled={uploaderLogo.isPending}
+              >
+                {uploaderLogo.isPending ? 'Envoi…' : equipe.logo ? 'Changer le logo' : 'Ajouter un logo'}
+              </Bouton>
+              <p className="mt-1.5 text-xs text-text-mute">JPEG, PNG ou WebP, 3 Mo maximum.</p>
+            </div>
+          </div>
+
           <form onSubmit={soumettre} className="flex items-end gap-3">
             <div className="min-w-0 flex-1">
               <ChampSelect

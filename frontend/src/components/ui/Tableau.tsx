@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { styleCascade } from '../../hooks/useCascade'
 import { trierLignes, type SensTri } from '../../lib/tri'
@@ -52,6 +52,11 @@ interface TableauProps<T> {
   // badges de statut. Sans cette fonction, toutes les lignes restent
   // neutres (bordure standard, pas de liseret colore).
   tonLigne?: (ligne: T) => TonBadge
+  // Style inline supplementaire, ligne par ligne — pour un accent qui ne
+  // rentre PAS dans les tons semantiques de TonBadge (ex. or/argent/
+  // bronze du podium, des couleurs d'OBJET comme --ballon-*, jamais des
+  // etats). Prioritaire sur tonLigne (applique apres, en inline).
+  styleLigne?: (ligne: T) => CSSProperties | undefined
   // Si fourni, chaque ligne devient un lien (ex. vers sa fiche detaillee).
   lienLigne?: (ligne: T) => string
 }
@@ -77,6 +82,7 @@ export function Tableau<T>({
   triInitial,
   actualisation = false,
   tonLigne,
+  styleLigne,
   lienLigne,
 }: TableauProps<T>) {
   const [tri, setTri] = useState<{ cle: string; sens: SensTri } | null>(triInitial ?? null)
@@ -110,9 +116,15 @@ export function Tableau<T>({
           cette bordure fantome ici, l'en-tete calculerait ses colonnes sur
           une largeur legerement plus grande que les cartes — un ecart
           sous le pixel, mais un ecart quand meme. */}
+      {/* Cachee sur mobile : chaque cellule porte deja son propre libelle
+          en ligne juste en dessous (voir les cellules plus bas) — sur un
+          ecran etroit, cette rangee d'en-tetes en colonnes n'a plus de
+          sens (voir la rangee suivante, passee en carte empilee). Le tri
+          au clic devient indisponible sur mobile : compromis assume,
+          jamais l'enjeu principal d'un ecran de telephone. */}
       <div
         role="row"
-        className="grid gap-x-4 border border-l-2 border-transparent px-4 pb-2.5"
+        className="grid gap-x-4 border border-l-2 border-transparent px-4 pb-2.5 max-md:hidden"
         style={{ gridTemplateColumns }}
       >
         {colonnes.map((colonne) => {
@@ -164,16 +176,34 @@ export function Tableau<T>({
       {/* flex-col + gap : cartes separees, jamais des lignes collees. */}
       <div className="flex flex-col gap-2.5">
         {lignesAffichees.map((ligne, index) => {
-          const classeLigne = `koko-cascade grid items-center gap-x-4 rounded-r-xl rounded-l-sm border border-border border-l-2 bg-surface px-4 py-3.5 transition-[border-color,background-color,transform] duration-200 hover:border-primary hover:bg-elevated hover:translate-x-0.5 ${CLASSES_ACCENT[tonLigne?.(ligne) ?? 'primaire']}`
-          const styleLigne = { gridTemplateColumns, ...styleCascade(index) }
+          // grid-cols-[var(--grille)] plutot que le gridTemplateColumns
+          // en inline direct : un style inline ne peut JAMAIS etre battu
+          // par un media query classique — passer par une variable CSS
+          // permet a max-md:grid-cols-1 (classe, donc en feuille de
+          // style) de reprendre la main sur mobile, la ligne devenant une
+          // carte a un seul "colonne" (chaque cellule empilee) au lieu
+          // d'une grille aussi large que sur desktop.
+          const classeLigne = `koko-cascade grid grid-cols-[var(--grille)] items-center gap-x-4 max-md:grid-cols-1 max-md:gap-y-2.5 rounded-r-xl rounded-l-sm border border-border border-l-2 bg-surface px-4 py-3.5 max-md:py-4 transition-[border-color,background-color,transform] duration-200 hover:border-primary hover:bg-elevated hover:translate-x-0.5 ${CLASSES_ACCENT[tonLigne?.(ligne) ?? 'primaire']}`
+          const styleCalcule = {
+            '--grille': gridTemplateColumns,
+            ...styleCascade(index),
+            ...styleLigne?.(ligne),
+          } as CSSProperties
           const cellules = colonnes.map((colonne) => {
             const alignement = colonne.align ?? (colonne.numerique ? 'droite' : 'gauche')
             return (
               <div
                 key={colonne.cle}
                 role="cell"
-                className={`${CLASSES_ALIGNEMENT[alignement]} ${colonne.numerique ? 'tabular-nums' : ''}`}
+                className={`${CLASSES_ALIGNEMENT[alignement]} max-md:text-left ${colonne.numerique ? 'tabular-nums' : ''}`}
               >
+                {/* Libelle visible SEULEMENT sur mobile : sans lui, une
+                    fois la grille empilee en carte, plus rien n'indique
+                    ce que represente chaque valeur (l'en-tete du dessus
+                    est cachee, voir plus haut). */}
+                <span className="hidden max-md:mb-0.5 max-md:block max-md:text-2xs max-md:font-medium max-md:tracking-[0.08em] max-md:text-text-mute max-md:uppercase">
+                  {colonne.entete}
+                </span>
                 {colonne.rendu(ligne)}
               </div>
             )
@@ -182,11 +212,11 @@ export function Tableau<T>({
           // dynamiquement) : <Link> et <div> n'acceptent pas les memes
           // props, TypeScript ne peut pas reconcilier les deux d'un coup.
           return lienLigne ? (
-            <Link key={cleLigne(ligne)} to={lienLigne(ligne)} role="row" style={styleLigne} className={classeLigne}>
+            <Link key={cleLigne(ligne)} to={lienLigne(ligne)} role="row" style={styleCalcule} className={classeLigne}>
               {cellules}
             </Link>
           ) : (
-            <div key={cleLigne(ligne)} role="row" style={styleLigne} className={classeLigne}>
+            <div key={cleLigne(ligne)} role="row" style={styleCalcule} className={classeLigne}>
               {cellules}
             </div>
           )

@@ -59,13 +59,18 @@ export async function api<T>(chemin: string, options: OptionsRequete = {}): Prom
   const base = urlApi()
   const { methode = 'GET', corps, sansRafraichissement = false } = options
 
+  // FormData (upload d'image) : jamais de JSON.stringify, et surtout
+  // jamais de Content-Type pose a la main — fetch calcule lui-meme la
+  // frontiere multipart, un en-tete manuel la casserait.
+  const estFormData = corps instanceof FormData
+
   const envoyer = async () => {
     try {
       return await fetch(`${base}${chemin}`, {
         method: methode,
         credentials: 'include',
-        headers: corps === undefined ? undefined : { 'Content-Type': 'application/json' },
-        body: corps === undefined ? undefined : JSON.stringify(corps),
+        headers: corps === undefined || estFormData ? undefined : { 'Content-Type': 'application/json' },
+        body: corps === undefined ? undefined : estFormData ? corps : JSON.stringify(corps),
       })
     } catch {
       throw new ApiError(0, 'Serveur injoignable')

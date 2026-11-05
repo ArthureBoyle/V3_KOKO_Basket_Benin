@@ -3,6 +3,7 @@ import { Bouton } from '../../components/ui/Bouton'
 import { EtatVide } from '../../components/ui/EtatVide'
 import { SqueletteLignes } from '../../components/ui/Squelette'
 import { messageErreurApi } from '../../lib/erreurs'
+import { urlImage } from '../../lib/format'
 import { useJoueursPool } from './api'
 import { useEquipes } from './apiEquipes'
 import { DialogueCreerEquipe } from './DialogueCreerEquipe'
@@ -61,15 +62,24 @@ export function OngletEquipes({ tournoiId, equipesMax }: { tournoiId: number; eq
                 onClick={() => setEquipeSelectionneeId(equipe.id)}
                 className="flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3.5 text-left transition-colors duration-150 hover:border-primary hover:bg-elevated"
               >
-                {/* Couleur choisie par l'organisateur pour CETTE equipe
+                {/* Logo si deja uploade (voir DialogueEffectifEquipe), sinon
+                    la couleur choisie par l'organisateur pour CETTE equipe
                     (maillot reel) : une donnee, pas un token de theme —
                     rien a voir avec la regle "jamais de couleur en dur"
                     qui ne couvre que le chrome de l'interface. */}
-                <span
-                  aria-hidden="true"
-                  className="size-4 shrink-0 rounded-full border border-border"
-                  style={{ backgroundColor: equipe.couleur }}
-                />
+                {equipe.logo ? (
+                  <img
+                    src={urlImage(equipe.logo)}
+                    alt=""
+                    className="size-8 shrink-0 rounded-full border border-border object-cover"
+                  />
+                ) : (
+                  <span
+                    aria-hidden="true"
+                    className="size-4 shrink-0 rounded-full border border-border"
+                    style={{ backgroundColor: equipe.couleur }}
+                  />
+                )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{equipe.nom}</p>
                   <p className="text-xs text-text-mute">

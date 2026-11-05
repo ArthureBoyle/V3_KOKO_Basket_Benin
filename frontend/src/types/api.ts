@@ -378,3 +378,68 @@ export interface ModificationTournoi {
   coefficientMalusFautes?: number
   coefficientBoostContres?: number
 }
+
+// ================================================
+// JOUEUR (espace joueur) — GET/PUT /joueurs/moi*, scope automatique sur
+// le compte connecte (jamais d'id en parametre, voir joueurController).
+// ================================================
+export interface ProfilJoueur {
+  id: number
+  idKoko: string
+  nomLegal: string
+  prenom: string
+  surnom: string | null
+  dateNaissance: string
+  avatar: string | null
+}
+
+export interface EquipeJoueurResume {
+  id: number
+  nom: string
+  couleur: string
+  logo: string | null
+  numeroDeMaillot: number
+}
+
+export interface TournoiJoueurResume {
+  id: number
+  nom: string
+  lieu: string
+  statut: StatutTournoi
+  dateDebut: string
+  dateFin: string
+}
+
+// GET /joueurs/moi/tournois — equipe null tant que l'organisateur n'a
+// pas encore place le joueur dans une equipe (il est deja certifie pour
+// autant, voir getMesTournois cote backend).
+export interface InscriptionJoueur {
+  tournoi: TournoiJoueurResume
+  equipe: EquipeJoueurResume | null
+}
+
+export interface EquipeMatchJoueur {
+  id: number
+  nom: string
+  couleur: string
+}
+
+// GET /joueurs/moi/matchs?tournoiId= — calendrier COMPLET du tournoi
+// (pas seulement les matchs de l'equipe du joueur, voir getMesMatchs).
+export interface MatchJoueur {
+  id: number
+  tournoiId: number
+  equipe1Id: number
+  equipe2Id: number
+  equipe1: EquipeMatchJoueur
+  equipe2: EquipeMatchJoueur
+  date: string
+  dateOriginale: string | null
+  lieu: string
+  type: string
+  statut: StatutMatch
+  score1: number | null
+  score2: number | null
+  nombreCorrectionsScore: number
+  arbitre: string | null
+}

@@ -4,6 +4,9 @@ import { PageConnexion } from '../features/auth/PageConnexion'
 import { FicheCompte } from '../features/comptes/FicheCompte'
 import { ListeComptes } from '../features/comptes/ListeComptes'
 import { AccueilJoueur } from '../features/joueur/AccueilJoueur'
+import { FicheTournoiJoueur } from '../features/joueur/FicheTournoiJoueur'
+import { ListeMesTournoisJoueur } from '../features/joueur/ListeMesTournoisJoueur'
+import { PageProfilJoueur } from '../features/joueur/PageProfilJoueur'
 import { AccueilOrganisateur } from '../features/organisateur/AccueilOrganisateur'
 import { ListeMesTournois } from '../features/organisateur/ListeMesTournois'
 import { FicheTournoi } from '../features/tournois/FicheTournoi'
@@ -67,7 +70,12 @@ export const router = createBrowserRouter([
         <LayoutEspace />
       </GardeRole>
     ),
-    children: [{ index: true, element: <AccueilJoueur /> }],
+    children: [
+      { index: true, element: <AccueilJoueur /> },
+      { path: 'tournois', element: <ListeMesTournoisJoueur /> },
+      { path: 'tournois/:id', element: <FicheTournoiJoueur /> },
+      { path: 'profil', element: <PageProfilJoueur /> },
+    ],
   },
   ...routesDeveloppement,
   { path: '*', element: <PageIntrouvable /> },

@@ -106,3 +106,11 @@ export function isoVersHeureBenin(iso: string): string {
 export function isoVersJour(iso: string): string {
   return iso.slice(0, 10)
 }
+
+// Le backend ne renvoie jamais qu'un chemin RELATIF ("joueurs/uuid.jpg",
+// voir utils/uploadImage.ts cote backend) : jamais stocke tel quel dans
+// un <img src>, toujours recompose avec l'origine de l'API (servi sur
+// /uploads, voir app.ts).
+export function urlImage(chemin: string): string {
+  return `${import.meta.env.VITE_API_URL}/uploads/${chemin}`
+}

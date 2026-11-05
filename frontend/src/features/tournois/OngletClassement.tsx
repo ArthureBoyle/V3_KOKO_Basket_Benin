@@ -8,7 +8,7 @@ import { messageErreurApi } from '../../lib/erreurs'
 import { comparerNombre, comparerTexte } from '../../lib/tri'
 import type { AlgorithmeClassement, EquipeClassee, EquipeResumeTournoi, JoueurClasse } from '../../types/api'
 import { useClassementEquipes, useClassementJoueurs } from './apiClassement'
-import { champsComptantPourLeClassement } from './constantes'
+import { champsComptantPourLeClassement, medaille, styleLignePodium } from './constantes'
 
 interface Props {
   tournoiId: number
@@ -37,7 +37,25 @@ function colonnesJoueurs(
   champs: { points: boolean; fautes: boolean; contres: boolean },
 ): Colonne<JoueurClasse>[] {
   return [
-  { cle: 'rang', entete: '#', largeur: '0.5fr', numerique: true, align: 'centre', rendu: (j) => j.rang },
+  {
+    cle: 'rang',
+    entete: '#',
+    largeur: '0.5fr',
+    numerique: true,
+    align: 'centre',
+    // Podium (top 3) : medaille au lieu du simple chiffre (voir
+    // styleLignePodium pour le liseret/halo assorti sur la ligne).
+    rendu: (j) => {
+      const m = medaille(j.rang)
+      return m ? (
+        <span aria-label={`Rang ${j.rang}`} className="text-xl leading-none">
+          {m}
+        </span>
+      ) : (
+        j.rang
+      )
+    },
+  },
   {
     cle: 'joueur',
     entete: 'Joueur',
@@ -127,7 +145,23 @@ function colonnesJoueurs(
 }
 
 const COLONNES_EQUIPES: Colonne<EquipeClassee>[] = [
-  { cle: 'rang', entete: '#', largeur: '0.5fr', numerique: true, align: 'centre', rendu: (e) => e.rang },
+  {
+    cle: 'rang',
+    entete: '#',
+    largeur: '0.5fr',
+    numerique: true,
+    align: 'centre',
+    rendu: (e) => {
+      const m = medaille(e.rang)
+      return m ? (
+        <span aria-label={`Rang ${e.rang}`} className="text-xl leading-none">
+          {m}
+        </span>
+      ) : (
+        e.rang
+      )
+    },
+  },
   {
     cle: 'nom',
     entete: 'Équipe',
@@ -210,6 +244,7 @@ export function OngletClassement({ tournoiId, equipes: equipesDuTournoi, algorit
                 colonnes={colonnesJoueurs(nomEquipe, champs)}
                 lignes={joueurs.data}
                 cleLigne={(j) => j.joueurId}
+                styleLigne={(j) => styleLignePodium(j.rang)}
                 chargement={joueurs.isLoading}
                 actualisation={joueurs.isFetching && !joueurs.isLoading}
                 vide={
@@ -231,6 +266,7 @@ export function OngletClassement({ tournoiId, equipes: equipesDuTournoi, algorit
             colonnes={COLONNES_EQUIPES}
             lignes={equipes.data}
             cleLigne={(e) => e.id}
+            styleLigne={(e) => styleLignePodium(e.rang)}
             chargement={equipes.isLoading}
             actualisation={equipes.isFetching && !equipes.isLoading}
             vide={<EtatVide titre="Aucune équipe" description="Crée des équipes (onglet Équipes) pour voir un classement." />}

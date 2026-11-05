@@ -80,3 +80,19 @@ export function useRetirerJoueurEquipe(equipeId: number, tournoiId: number) {
     },
   })
 }
+
+// FormData (voir api/client.ts) : jamais de JSON pour un fichier.
+export function useUploaderLogoEquipe(equipeId: number, tournoiId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (fichier: File) => {
+      const corps = new FormData()
+      corps.append('logo', fichier)
+      return api<Equipe>(`/equipes/${equipeId}/logo`, { methode: 'PUT', corps })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: cleEquipe(equipeId) })
+      queryClient.invalidateQueries({ queryKey: cleEquipes(tournoiId) })
+    },
+  })
+}
