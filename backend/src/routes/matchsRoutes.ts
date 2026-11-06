@@ -2,6 +2,7 @@
 // ROUTES MATCHS
 // ================================================
 import { Router } from "express";
+import { validerIdParam } from "../middlewares/validerIdParam";
 import {
   creerMatch,
   getMatchs,
@@ -18,6 +19,8 @@ import { verifierAuth } from "../middlewares/verifierAuth";
 import { verifierRole } from "../middlewares/verifierRole";
 
 const router = Router();
+router.param("id", validerIdParam);
+router.param("joueurId", validerIdParam);
 
 router.use(verifierAuth);
 

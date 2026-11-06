@@ -15,6 +15,7 @@ import { reponseSucces, reponseErreur } from "../utils/reponses";
 import { calculerStatutTournoi } from "../utils/tournoiStatut";
 import { calculerStatutMatch } from "../utils/matchStatut";
 import { calculerAge } from "../utils/age";
+import { supprimerAncienneImage } from "../utils/uploadImage";
 
 const MOT_DE_PASSE_ORGANISATEUR_DEFAUT = "Orga2025!";
 const MOT_DE_PASSE_JOUEUR_DEFAUT = "Koko2025!";
@@ -304,6 +305,23 @@ export async function desactiverCompte(req: Request, res: Response, next: NextFu
     }
     await prisma.user.update({ where: { id }, data: { actif: false } });
     return reponseSucces(res, { message: "Compte desactive" });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// PUT /comptes/:id/retirer-avatar — ADMIN + code secret. Moderation : une
+// photo de profil inappropriee est supprimee (fichier compris), le joueur
+// retombe sur ses initiales et peut en televerser une autre.
+export async function retirerAvatar(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = parseInt(String(req.params.id), 10);
+    const joueur = await prisma.joueur.findUnique({ where: { userId: id } });
+    if (!joueur) return reponseErreur(res, "Joueur introuvable", 404);
+    if (!joueur.avatar) return reponseErreur(res, "Ce joueur n'a pas de photo", 400);
+    await supprimerAncienneImage(joueur.avatar);
+    await prisma.joueur.update({ where: { id: joueur.id }, data: { avatar: null } });
+    return reponseSucces(res, { message: "Photo retiree" });
   } catch (err) {
     next(err);
   }

@@ -2,6 +2,7 @@
 // ROUTES TOURNOIS
 // ================================================
 import { Router } from "express";
+import { validerIdParam } from "../middlewares/validerIdParam";
 import {
   getTournois,
   getMesTournois,
@@ -22,6 +23,8 @@ import { limiteurCodeAdmin } from "../middlewares/limiteurCodeAdmin";
 import { verifierCodeAdmin } from "../middlewares/verifierCodeAdmin";
 
 const router = Router();
+router.param("id", validerIdParam);
+router.param("joueurId", validerIdParam);
 
 router.use(verifierAuth);
 

@@ -2,6 +2,7 @@
 // ROUTES EQUIPES
 // ================================================
 import { Router } from "express";
+import { validerIdParam } from "../middlewares/validerIdParam";
 import {
   creerEquipe,
   getEquipes,
@@ -17,6 +18,8 @@ import { limiteurUpload } from "../middlewares/limiteurUpload";
 import { uploadMiddleware } from "../utils/uploadImage";
 
 const router = Router();
+router.param("id", validerIdParam);
+router.param("joueurId", validerIdParam);
 
 router.use(verifierAuth);
 

@@ -251,6 +251,64 @@ describe("Comptes", () => {
     });
   });
 
+  describe("Identifiant d'URL invalide", () => {
+    it("GET /comptes/NaN -> 404 propre (jamais 500)", async () => {
+      const res = await request(app)
+        .get("/comptes/NaN")
+        .set("Cookie", cookieValue(cookiesAdmin, "accessToken"));
+      expect(res.status).toBe(404);
+    });
+
+    it("GET /comptes/12abc -> 404", async () => {
+      const res = await request(app)
+        .get("/comptes/12abc")
+        .set("Cookie", cookieValue(cookiesAdmin, "accessToken"));
+      expect(res.status).toBe(404);
+    });
+  });
+
+  describe("PUT /comptes/:id/retirer-avatar — moderation", () => {
+    it("sans codeAdmin -> 403", async () => {
+      const res = await request(app)
+        .put(`/comptes/${orgaId}/retirer-avatar`)
+        .set("Cookie", cookieValue(cookiesAdmin, "accessToken"));
+      expect(res.status).toBe(403);
+    });
+
+    it("compte sans joueur (organisateur) -> 404", async () => {
+      const res = await request(app)
+        .put(`/comptes/${orgaId}/retirer-avatar`)
+        .set("Cookie", cookieValue(cookiesAdmin, "accessToken"))
+        .send({ codeAdmin: CODE_ADMIN });
+      expect(res.status).toBe(404);
+    });
+
+    it("joueur avec photo -> 200, avatar remis a null ; sans photo -> 400", async () => {
+      const creation = await request(app)
+        .post("/comptes/joueur")
+        .set("Cookie", cookieValue(cookiesAdmin, "accessToken"))
+        .send({ nomLegal: "Moderation", prenom: "Photo", emailReel: "photo@example.com", dateNaissance: "2001-02-03" });
+      expect(creation.status).toBe(201);
+      const joueur = await prisma.joueur.findUnique({ where: { idKoko: creation.body.data.idKoko } });
+      idsComptesCrees.push(joueur!.userId);
+      await prisma.joueur.update({ where: { id: joueur!.id }, data: { avatar: "joueurs/fichier-inexistant.jpg" } });
+
+      const retrait = await request(app)
+        .put(`/comptes/${joueur!.userId}/retirer-avatar`)
+        .set("Cookie", cookieValue(cookiesAdmin, "accessToken"))
+        .send({ codeAdmin: CODE_ADMIN });
+      expect(retrait.status).toBe(200);
+      const apres = await prisma.joueur.findUnique({ where: { id: joueur!.id } });
+      expect(apres?.avatar).toBeNull();
+
+      const encore = await request(app)
+        .put(`/comptes/${joueur!.userId}/retirer-avatar`)
+        .set("Cookie", cookieValue(cookiesAdmin, "accessToken"))
+        .send({ codeAdmin: CODE_ADMIN });
+      expect(encore.status).toBe(400);
+    });
+  });
+
   describe("PUT /comptes/:id/desactiver et /reactiver", () => {
     it("desactive (bon code) : actif passe a false, login refuse ensuite (403)", async () => {
       const res = await request(app)
@@ -721,7 +779,7 @@ describe("Comptes", () => {
     it("organisateur -> ses tournois avec statut recalcule, pas de bloc joueur ni de stats", async () => {
       const res = await request(app).get(`/comptes/${orgaId}`).set("Cookie", cookieValue(cookiesAdmin, "accessToken"));
       expect(res.status).toBe(200);
-      expect(res.body.data.joueur).toBeUndefined();
+      expect(res.body.data.joueur).toBeNull();
       expect(res.body.data.statsGlobales).toBeUndefined();
       const annule = res.body.data.tournois.find((t: any) => t.id === tournoiAnnuleId);
       expect(annule.statut).toBe("ANNULE");

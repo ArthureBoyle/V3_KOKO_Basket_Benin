@@ -220,6 +220,21 @@ export const openapiDocument = {
         },
       },
     },
+    "/comptes/{id}/retirer-avatar": {
+      put: {
+        tags: ["Comptes"],
+        summary: "Retire la photo de profil d'un joueur (moderation) — exige le code secret admin",
+        parameters: [paramId("id", "id du compte User du joueur")],
+        requestBody: corps(codeAdminSchema),
+        responses: {
+          "200": succes("Photo retiree"),
+          "400": ref("DonneesInvalides"),
+          "403": ref("AccesRefuse"),
+          "404": ref("Introuvable"),
+          "429": ref("TropDeRequetes"),
+        },
+      },
+    },
     "/comptes/{id}/reactiver": {
       put: {
         tags: ["Comptes"],
