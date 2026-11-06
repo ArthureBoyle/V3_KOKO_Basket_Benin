@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import { CartePage } from '../../components/CartePage'
 import { EnTetePage } from '../../components/EnTetePage'
 import { BadgeStatutTournoi } from '../../components/ui/Badge'
-import { Ballon } from '../../components/ui/Ballon'
 import { Champ } from '../../components/ui/Champ'
 import { EtatVide } from '../../components/ui/EtatVide'
 import { Onglets, PanneauOnglet } from '../../components/ui/Onglets'
@@ -12,6 +11,8 @@ import { formaterJour } from '../../lib/format'
 import { comparerTexte } from '../../lib/tri'
 import type { InscriptionJoueur, StatutTournoi } from '../../types/api'
 import { useMesTournoisJoueur } from './api'
+import { CartesTournoisJoueur } from './CartesTournoisJoueur'
+import { LogoEquipe } from '../../components/ui/LogoEquipe'
 
 type IdOnglet = 'tous' | StatutTournoi
 
@@ -50,11 +51,7 @@ const COLONNES: Colonne<InscriptionJoueur>[] = [
     rendu: (l) =>
       l.equipe ? (
         <span className="inline-flex items-center gap-2">
-          <span
-            aria-hidden="true"
-            className="size-3 shrink-0 rounded-full border border-border"
-            style={{ backgroundColor: l.equipe.couleur }}
-          />
+          <LogoEquipe couleur={l.equipe.couleur} logo={l.equipe.logo} />
           {l.equipe.nom}
         </span>
       ) : (
@@ -85,7 +82,7 @@ const TONS_STATUT: Record<StatutTournoi, 'primaire' | 'succes' | 'neutre' | 'dan
 }
 
 export function ListeMesTournoisJoueur() {
-  const [onglet, setOnglet] = useState<IdOnglet>('tous')
+  const [onglet, setOnglet] = useState<IdOnglet>('ACTIF')
   const [recherche, setRecherche] = useState('')
   const { data: inscriptions, isLoading, isFetching, isError, error } = useMesTournoisJoueur()
 
@@ -98,11 +95,10 @@ export function ListeMesTournoisJoueur() {
 
   return (
     <section>
-      <CartePage>
+      <CartePage sansFondMobile>
         <EnTetePage
           titre="Mes tournois"
           description="Les tournois où tu es certifié."
-          icone={<Ballon mode="arret" className="size-6" />}
         />
 
         <Onglets
@@ -128,23 +124,32 @@ export function ListeMesTournoisJoueur() {
               {messageErreurApi(error)}
             </p>
           ) : (
-            <Tableau
-              key={`${onglet}:${recherche}`}
-              libelle="Liste de mes tournois"
-              colonnes={COLONNES}
-              lignes={lignes}
-              cleLigne={(l) => l.tournoi.id}
-              tonLigne={(l) => TONS_STATUT[l.tournoi.statut]}
-              lienLigne={(l) => `/joueur/tournois/${l.tournoi.id}`}
-              chargement={isLoading}
-              actualisation={isFetching && !isLoading}
-              vide={
-                <EtatVide
-                  titre={recherche ? 'Aucun résultat' : 'Aucun tournoi'}
-                  description={recherche ? 'Essaie une autre recherche.' : "Tu n'es certifié dans aucun tournoi pour le moment."}
+            <>
+              {lignes && lignes.length > 0 && <CartesTournoisJoueur lignes={lignes} />}
+              <div className={lignes && lignes.length > 0 ? 'max-md:hidden' : ''}>
+                <Tableau
+                  key={`${onglet}:${recherche}`}
+                  libelle="Liste de mes tournois"
+                  colonnes={COLONNES}
+                  lignes={lignes}
+                  cleLigne={(l) => l.tournoi.id}
+                  tonLigne={(l) => TONS_STATUT[l.tournoi.statut]}
+                  lienLigne={(l) => `/joueur/tournois/${l.tournoi.id}`}
+                  chargement={isLoading}
+                  actualisation={isFetching && !isLoading}
+                  vide={
+                    <EtatVide
+                      titre={recherche ? 'Aucun résultat' : 'Aucun tournoi'}
+                      description={
+                        recherche
+                          ? 'Essaie une autre recherche.'
+                          : "Tu n'es certifié dans aucun tournoi pour le moment."
+                      }
+                    />
+                  }
                 />
-              }
-            />
+              </div>
+            </>
           )}
         </PanneauOnglet>
       </CartePage>

@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router'
 import { CartePage } from '../../components/CartePage'
 import { EnTetePage } from '../../components/EnTetePage'
 import { Badge } from '../../components/ui/Badge'
-import { Ballon } from '../../components/ui/Ballon'
 import { Carreau } from '../../components/ui/Carreau'
 import { EtatVide } from '../../components/ui/EtatVide'
 import { Tableau, type Colonne } from '../../components/ui/Tableau'
@@ -12,6 +11,7 @@ import { messageErreurApi } from '../../lib/erreurs'
 import { comparerNombre } from '../../lib/tri'
 import type { TournoiOrganisateur } from '../../types/api'
 import { useMesTournois } from '../tournois/api'
+import { CartesTournois } from '../tournois/CartesTournois'
 
 const COLONNES_ACTION: Colonne<TournoiOrganisateur>[] = [
   {
@@ -65,30 +65,34 @@ export function AccueilOrganisateur() {
       <EnTetePage
         titre="Supervision"
         description={`Bonjour ${session?.prenom}.`}
-        icone={<Ballon mode="arret" className="size-6" />}
       />
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         <Carreau libelle="Tournois en cours" centrer onClick={() => navigate('/organisateur/tournois')}>
           <span className="text-2xl tabular-nums">{isLoading ? '—' : tournoisActifs.length}</span>
         </Carreau>
         <Carreau libelle="Tournois à venir" centrer onClick={() => navigate('/organisateur/tournois')}>
           <span className="text-2xl tabular-nums">{isLoading ? '—' : tournoisAVenir.length}</span>
         </Carreau>
+        <div className="col-span-2 md:col-span-1">
         <Carreau libelle="Scores à saisir" centrer onClick={() => navigate('/organisateur/tournois')}>
           <span className={`text-2xl tabular-nums ${scoresASaisir > 0 ? 'text-warning' : ''}`}>
             {isLoading ? '—' : scoresASaisir}
           </span>
         </Carreau>
+        </div>
       </div>
 
-      <CartePage>
+      <CartePage sansFondMobile>
         <h2 className="mb-4 text-xl font-medium">Nécessite une action</h2>
         {isError ? (
           <p role="alert" className="text-sm text-danger">
             {messageErreurApi(error)}
           </p>
         ) : (
+          <>
+            {tournoisAvecAction.length > 0 && <CartesTournois tournois={tournoisAvecAction} lienBase="/organisateur/tournois" />}
+            <div className={tournoisAvecAction.length > 0 ? 'max-md:hidden' : ''}>
           <Tableau
             libelle="Tournois avec des scores à saisir"
             colonnes={COLONNES_ACTION}
@@ -98,6 +102,8 @@ export function AccueilOrganisateur() {
             chargement={isLoading}
             vide={<EtatVide titre="Rien à traiter" description="Aucun match en attente de score pour le moment." />}
           />
+            </div>
+          </>
         )}
       </CartePage>
     </section>

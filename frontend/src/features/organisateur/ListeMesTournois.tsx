@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import { CartePage } from '../../components/CartePage'
 import { EnTetePage } from '../../components/EnTetePage'
 import { Badge, BadgeStatutTournoi } from '../../components/ui/Badge'
-import { Ballon } from '../../components/ui/Ballon'
 import { Champ } from '../../components/ui/Champ'
 import { EtatVide } from '../../components/ui/EtatVide'
 import { Onglets, PanneauOnglet } from '../../components/ui/Onglets'
@@ -12,6 +11,7 @@ import { formaterJour } from '../../lib/format'
 import { comparerNombre, comparerTexte } from '../../lib/tri'
 import type { StatutTournoi, TournoiOrganisateur } from '../../types/api'
 import { useMesTournois } from '../tournois/api'
+import { CartesTournois } from '../tournois/CartesTournois'
 
 type IdOnglet = 'tous' | StatutTournoi
 
@@ -97,7 +97,7 @@ const TONS_STATUT: Record<StatutTournoi, 'primaire' | 'succes' | 'neutre' | 'dan
 // cote backend). L'organisateur gere ensuite equipes/matchs/scores sur
 // les tournois qui lui sont attribues.
 export function ListeMesTournois() {
-  const [onglet, setOnglet] = useState<IdOnglet>('tous')
+  const [onglet, setOnglet] = useState<IdOnglet>('ACTIF')
   const [recherche, setRecherche] = useState('')
   const { data: tournois, isLoading, isFetching, isError, error } = useMesTournois()
 
@@ -110,11 +110,10 @@ export function ListeMesTournois() {
 
   return (
     <section>
-      <CartePage>
+      <CartePage sansFondMobile>
         <EnTetePage
           titre="Mes tournois"
           description="Les tournois qui te sont attribués."
-          icone={<Ballon mode="arret" className="size-6" />}
         />
 
         <Onglets
@@ -140,6 +139,9 @@ export function ListeMesTournois() {
               {messageErreurApi(error)}
             </p>
           ) : (
+            <>
+            {lignes && lignes.length > 0 && <CartesTournois tournois={lignes} lienBase="/organisateur/tournois" />}
+            <div className={lignes && lignes.length > 0 ? 'max-md:hidden' : ''}>
             <Tableau
               key={`${onglet}:${recherche}`}
               libelle="Liste de mes tournois"
@@ -157,6 +159,8 @@ export function ListeMesTournois() {
                 />
               }
             />
+            </div>
+            </>
           )}
         </PanneauOnglet>
       </CartePage>

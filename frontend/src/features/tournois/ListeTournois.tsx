@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import { CartePage } from '../../components/CartePage'
 import { EnTetePage } from '../../components/EnTetePage'
 import { Badge, BadgeStatutTournoi } from '../../components/ui/Badge'
-import { Ballon } from '../../components/ui/Ballon'
 import { Bouton } from '../../components/ui/Bouton'
 import { Champ } from '../../components/ui/Champ'
 import { EtatVide } from '../../components/ui/EtatVide'
@@ -13,6 +12,7 @@ import { formaterJour } from '../../lib/format'
 import { comparerNombre, comparerTexte } from '../../lib/tri'
 import type { StatutTournoi, TournoiAdmin } from '../../types/api'
 import { useTournois } from './api'
+import { CartesTournois } from './CartesTournois'
 import { DialogueCreerTournoi } from './DialogueCreerTournoi'
 
 type IdOnglet = 'tous' | StatutTournoi
@@ -105,7 +105,7 @@ const TONS_STATUT: Record<StatutTournoi, 'primaire' | 'succes' | 'neutre' | 'dan
 }
 
 export function ListeTournois() {
-  const [onglet, setOnglet] = useState<IdOnglet>('tous')
+  const [onglet, setOnglet] = useState<IdOnglet>('ACTIF')
   const [recherche, setRecherche] = useState('')
   const [creationOuverte, setCreationOuverte] = useState(false)
   const { data: tournois, isLoading, isFetching, isError, error } = useTournois()
@@ -119,11 +119,10 @@ export function ListeTournois() {
 
   return (
     <section>
-      <CartePage>
+      <CartePage sansFondMobile>
         <EnTetePage
           titre="Tournois"
           description="Compétitions créées après vérification du paiement hors application."
-          icone={<Ballon mode="arret" className="size-6" />}
           actions={
             <Bouton magnetique onClick={() => setCreationOuverte(true)}>
               Créer un tournoi
@@ -158,6 +157,9 @@ export function ListeTournois() {
               {messageErreurApi(error)}
             </p>
           ) : (
+            <>
+            {lignes && lignes.length > 0 && <CartesTournois tournois={lignes} lienBase="/admin/tournois" />}
+            <div className={lignes && lignes.length > 0 ? 'max-md:hidden' : ''}>
             <Tableau
               // Cle = onglet + recherche : force un vrai remontage de toutes
               // les cartes a chaque changement, pour que la cascade d'apparition
@@ -178,6 +180,8 @@ export function ListeTournois() {
                 />
               }
             />
+            </div>
+            </>
           )}
         </PanneauOnglet>
       </CartePage>

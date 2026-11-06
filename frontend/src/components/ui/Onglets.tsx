@@ -49,8 +49,8 @@ export function Onglets({ onglets, actif, onChanger, libelle, variante = 'soulig
         // chaque bouton force a garder sa largeur naturelle (voir
         // max-md:flex-none plus bas) — la rangee defile a la place de
         // clipper silencieusement les derniers onglets.
-        'flex gap-1 rounded-lg border border-border bg-elevated p-1 max-md:overflow-x-auto'
-      : 'flex gap-1 border-b border-border max-md:overflow-x-auto'
+        'flex gap-1 rounded-lg border border-border bg-elevated p-1 max-md:overflow-x-auto max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden'
+      : 'flex gap-1 border-b border-border max-md:overflow-x-auto max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden'
 
   return (
     <div role="tablist" aria-label={libelle} onKeyDown={clavier} className={classesConteneur}>
@@ -58,7 +58,11 @@ export function Onglets({ onglets, actif, onChanger, libelle, variante = 'soulig
         const estActif = onglet.id === actif
         const classes =
           variante === 'segmentee'
-            ? `flex-1 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors duration-150 max-md:flex-none ${
+            ? `flex-1 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors duration-150 ${
+                // 4 onglets ou plus : largeur naturelle + defilement sur mobile.
+                // 3 ou moins : ils se partagent toute la largeur, meme sur mobile.
+                onglets.length > 3 ? 'max-md:flex-none' : ''
+              } ${
                 estActif ? 'bg-primary text-on-primary' : 'text-text-mute hover:text-text'
               }`
             : `-mb-px border-b-2 px-3 py-2 text-sm whitespace-nowrap transition-colors duration-150 ${

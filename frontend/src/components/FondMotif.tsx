@@ -27,7 +27,7 @@ export function FondMotif({ motif }: FondMotifProps) {
       // ballon a besoin de plus de contraste pour rester identifiable
       // qu'un quadrillage dense de losanges a la meme opacite.
       className="pointer-events-none fixed inset-0 size-full"
-      style={{ color: 'var(--border)', opacity: OPACITES[motif] }}
+      style={{ color: 'var(--secondary)', opacity: OPACITES[motif] }}
     >
       <defs>
         <pattern id={idMotif} patternUnits="userSpaceOnUse" {...TAILLES[motif]}>
@@ -44,9 +44,9 @@ export function FondMotif({ motif }: FondMotifProps) {
 // toute premiere version a 0.4 ; ballons, motif plus epars, a besoin de
 // davantage — voir le commentaire au-dessus de OPACITES precedemment).
 const OPACITES: Record<MotifFond, number> = {
-  losange: 0.35,
-  ballons: 0.45,
-  terrain: 0.35,
+  losange: 0.4,
+  ballons: 0.5,
+  terrain: 0.4,
 }
 
 const TAILLES: Record<MotifFond, { width: number; height: number }> = {

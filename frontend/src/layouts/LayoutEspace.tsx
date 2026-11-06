@@ -6,7 +6,10 @@ import { Dialogue } from '../components/ui/Dialogue'
 import { BoutonRafraichir } from '../components/ui/BoutonRafraichir'
 import { useDeconnexion, useSession } from '../features/auth/session'
 import { useEffetDirectionnel } from '../hooks/useEffetDirectionnel'
+import type { LucideIcon } from 'lucide-react'
 import { useMotifFond } from '../hooks/useMotifFond'
+import { useMonProfil } from '../features/joueur/api'
+import { urlImage } from '../lib/format'
 import { useTheme } from '../hooks/useTheme'
 import type { Role } from '../types/api'
 import { Logo } from './Logo'
@@ -45,21 +48,28 @@ function LienNavigation({ chemin, libelle }: { chemin: string; libelle: string }
 // Onglet de la barre du bas (mobile) : icone + libelle court, empile —
 // le motif natif des applications telephone (jamais une sidebar reduite
 // ni un tiroir qui imite le desktop, voir la refonte de cet ecran).
-function LienNavigationMobile({ chemin, libelle, icone }: { chemin: string; libelle: string; icone: string }) {
+function LienNavigationMobile({ chemin, libelle, icone: Icone }: { chemin: string; libelle: string; icone: LucideIcon }) {
   return (
     <NavLink
       to={chemin}
       end
       className={({ isActive }) =>
-        `flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-2xs font-medium ${
+        `relative flex flex-1 flex-col items-center justify-center gap-1 py-1.5 text-2xs font-medium transition-colors duration-150 ${
           isActive ? 'text-primary-text' : 'text-text-mute'
         }`
       }
     >
-      <span aria-hidden="true" className="text-xl leading-none">
-        {icone}
-      </span>
-      {libelle}
+      {({ isActive }) => (
+        <>
+          {/* Liseret en haut de l'onglet actif : se voit sans dependre de la couleur seule. */}
+          <span
+            aria-hidden="true"
+            className={`absolute top-0 h-0.5 w-8 rounded-full bg-primary transition-opacity duration-150 ${isActive ? 'opacity-100' : 'opacity-0'}`}
+          />
+          <Icone aria-hidden="true" className="size-6" strokeWidth={isActive ? 2.25 : 1.75} />
+          {libelle}
+        </>
+      )}
     </NavLink>
   )
 }
@@ -79,6 +89,13 @@ function LienNavigationMobile({ chemin, libelle, icone }: { chemin: string; libe
 // - le compte (theme, motif, deconnexion) s'ouvre depuis un avatar dans
 //   l'en-tete, en fenetre modale (DialogueCompte), pas en popover ancre
 //   a une sidebar qui n'existe plus sur cet ecran.
+// Photo du joueur dans l'avatar de l'en-tete (initiales tant qu'il n'en a
+// pas, ou pendant le chargement). Le profil est deja en cache TanStack Query.
+function ContenuAvatarJoueur({ initiales }: { initiales: string }) {
+  const { data: profil } = useMonProfil()
+  return profil?.avatar ? <img src={urlImage(profil.avatar)} alt="" className="size-full object-cover" /> : <>{initiales}</>
+}
+
 export function LayoutEspace() {
   const { data: session } = useSession()
   const deconnexion = useDeconnexion()
@@ -113,30 +130,32 @@ export function LayoutEspace() {
       {/* Bande pleine largeur : bg-elevated (plus contrastee que bg-surface,
           pour ne pas se fondre visuellement dans le fond en dessous) et
           au-dessus de la sidebar, pas a cote d'elle. */}
-      <header className="flex h-20 shrink-0 items-center justify-between border-b border-border bg-elevated px-6 max-md:px-4">
-        <div className="flex items-center gap-3">
+      <header className="relative flex h-14 shrink-0 items-center justify-between border-b border-border bg-elevated px-4 md:h-20 md:px-6">
+        <div className="flex flex-col">
+          <Logo cheminAccueil={NAVIGATION_PAR_ROLE[session.role][0].chemin} />
+          <p className="mt-1 px-0.5 text-2xs tracking-[0.08em] text-text-mute uppercase max-md:hidden">
+            {LIBELLE_ESPACE[session.role]}
+          </p>
+        </div>
+        <div className="flex items-center gap-1">
+          {/* Desktop seulement : sur mobile, le logo rafraichit deja au clic. */}
+          <div className="max-md:hidden">
+            <BoutonRafraichir
+              enCours={nombreEnCours > 0}
+              onRafraichir={() => queryClient.refetchQueries({ type: 'active' })}
+            />
+          </div>
           {/* Avatar de compte : mobile seulement — ouvre DialogueCompte.
-              Sur desktop, le compte reste dans MenuCompte au bas de la
-              sidebar (toujours visible), cet avatar serait redondant. */}
+              Sur desktop, le compte reste dans MenuCompte au bas de la sidebar. */}
           <button
             type="button"
             onClick={() => setCompteMobileOuvert(true)}
             aria-label="Mon compte"
-            className="hidden size-9 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-on-primary max-md:flex"
+            className="hidden size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-xs font-medium text-on-primary max-md:flex"
           >
-            {initiales}
+            {session.role === 'JOUEUR' ? <ContenuAvatarJoueur initiales={initiales} /> : initiales}
           </button>
-          <div className="flex flex-col">
-            <Logo cheminAccueil={NAVIGATION_PAR_ROLE[session.role][0].chemin} />
-            <p className="mt-1.5 px-0.5 text-2xs tracking-[0.08em] text-text-mute uppercase">
-              {LIBELLE_ESPACE[session.role]}
-            </p>
-          </div>
         </div>
-        <BoutonRafraichir
-          enCours={nombreEnCours > 0}
-          onRafraichir={() => queryClient.refetchQueries({ type: 'active' })}
-        />
       </header>
 
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
@@ -144,7 +163,7 @@ export function LayoutEspace() {
             cachee sur mobile (max-md:hidden) — remplacee par la barre du
             bas + l'avatar de l'en-tete, jamais par un tiroir qui la
             reduirait telle quelle. */}
-        <aside className="relative flex w-60 shrink-0 flex-col bg-surface px-4 py-6 max-md:hidden">
+        <aside className="relative flex w-60 shrink-0 flex-col border-r border-border bg-surface px-4 py-6 max-md:hidden">
           <nav className="flex flex-col gap-2.5" aria-label="Navigation principale">
             {NAVIGATION_PAR_ROLE[session.role].map((entree) => (
               <LienNavigation key={entree.chemin} chemin={entree.chemin} libelle={entree.libelle} />
@@ -159,15 +178,6 @@ export function LayoutEspace() {
             onChangerMotif={changerMotif}
             onDeconnexion={() => deconnexion.mutate()}
             deconnexionEnCours={deconnexion.isPending}
-          />
-
-          {/* Bord lumineux (meme recette que le separateur d'EnTetePage,
-              tourne a la verticale) : un simple border-r plat rendait la
-              sidebar terne a cote du contenu texture — cette bande la
-              relie visuellement au reste sans lui ajouter de motif. */}
-          <div
-            aria-hidden="true"
-            className="absolute inset-y-0 right-0 w-[3px] bg-gradient-to-b from-transparent via-primary to-transparent shadow-[0_0_14px_1px_color-mix(in_oklab,var(--primary)_90%,transparent)]"
           />
         </aside>
 

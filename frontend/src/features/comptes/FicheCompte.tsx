@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams } from 'react-router'
 import { ApiError } from '../../api/client'
 import { CartePage } from '../../components/CartePage'
-import { EnTetePage } from '../../components/EnTetePage'
+import { BlocInfo } from '../../components/ui/BlocInfo'
 import { useNotifier } from '../../components/notifications/contexte'
 import { BadgeStatutTournoi } from '../../components/ui/Badge'
 import { Ballon } from '../../components/ui/Ballon'
@@ -20,15 +20,6 @@ import { useCompte, useDesactiverCompte, useReactiverCompte } from './api'
 
 function urlAvatar(chemin: string): string {
   return `${import.meta.env.VITE_API_URL}/uploads/${chemin}`
-}
-
-function Champ({ libelle, children }: { libelle: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <dt className="text-2xs font-medium tracking-[0.08em] text-text-mute uppercase">{libelle}</dt>
-      <dd className="mt-1 text-base">{children}</dd>
-    </div>
-  )
 }
 
 function StatChiffre({ libelle, valeur }: { libelle: string; valeur: number }) {
@@ -59,7 +50,7 @@ function BoutonStatut({
       type="button"
       onClick={onClick}
       disabled={enAttente}
-      className={`relative isolate inline-flex items-center gap-1.5 overflow-hidden rounded-full border px-3 py-1 text-2xs font-medium whitespace-nowrap transition-colors duration-150 disabled:cursor-wait ${
+      className={`relative isolate inline-flex items-center gap-1.5 overflow-hidden rounded-md border px-3 py-1 text-2xs font-medium whitespace-nowrap transition-colors duration-150 disabled:cursor-wait ${
         actif
           ? 'border-success/30 bg-success/12 text-success hover:bg-success/20'
           : 'border-danger/30 bg-danger/12 text-danger hover:bg-danger/20'
@@ -121,40 +112,44 @@ export function FicheCompte() {
       <LienRetour to="/admin/comptes">Retour aux comptes</LienRetour>
 
       <CartePage>
-        <EnTetePage
-          titre={`${compte.prenom} ${compte.nom}${compte.joueur?.surnom ? ` « ${compte.joueur.surnom} »` : ''}`}
-          description={estJoueur ? compte.joueur!.idKoko : compte.email}
-          icone={
-            estJoueur && compte.joueur!.avatar ? (
-              <img
-                src={urlAvatar(compte.joueur!.avatar)}
-                alt=""
-                className="size-full rounded-lg object-cover"
-              />
+        {/* Bloc d'identite : avatar/ballon + nom, puis infos en petits
+            blocs etiquetes, puis actions (pleine largeur sur mobile). */}
+        <div className="flex items-center gap-3">
+          <span className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-elevated">
+            {estJoueur && compte.joueur!.avatar ? (
+              <img src={urlAvatar(compte.joueur!.avatar)} alt="" className="size-full object-cover" />
             ) : (
               <Ballon mode="arret" className="size-6" />
-            )
-          }
-          actions={
-            <Bouton variante="secondaire" onClick={() => setModificationOuverte(true)}>
-              Modifier l'identité
-            </Bouton>
-          }
-        />
+            )}
+          </span>
+          <div className="min-w-0">
+            <h1 className="text-2xl leading-tight font-semibold break-words">
+              {compte.prenom} {compte.nom}
+              {compte.joueur?.surnom && <span className="text-text-mute"> « {compte.joueur.surnom} »</span>}
+            </h1>
+            <p className="mt-0.5 font-mono text-sm break-all text-text-mute">
+              {estJoueur ? compte.joueur!.idKoko : compte.email}
+            </p>
+          </div>
+        </div>
 
-        <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
-          <Champ libelle="Email KOKO">
-            <span className="font-mono text-sm">{compte.email}</span>
-          </Champ>
-          <Champ libelle="Email réel">
-            <span className="truncate">{compte.emailReel ?? '—'}</span>
-          </Champ>
+        <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="col-span-2 md:col-span-1">
+            <BlocInfo libelle="Email KOKO">
+              <span className="font-mono text-xs break-all">{compte.email}</span>
+            </BlocInfo>
+          </div>
+          <div className="col-span-2 md:col-span-1">
+            <BlocInfo libelle="Email réel">
+              <span className="break-all">{compte.emailReel ?? '—'}</span>
+            </BlocInfo>
+          </div>
           {estJoueur && (
-            <Champ libelle="Âge">
+            <BlocInfo libelle="Âge">
               <span className="tabular-nums">{formaterAge(compte.joueur!.age)}</span>
-            </Champ>
+            </BlocInfo>
           )}
-          <Champ libelle="Statut">
+          <BlocInfo libelle="Statut">
             <BoutonStatut
               actif={compte.actif}
               enAttente={reactiver.isPending || desactiver.isPending}
@@ -164,10 +159,13 @@ export function FicheCompte() {
                   : reactiver.mutate(compteId, { onSuccess: () => notifier('Compte réactivé', 'succes') })
               }
             />
-          </Champ>
+          </BlocInfo>
         </div>
 
-        <div className="mt-6">
+        <div className="mt-6 flex flex-col gap-2 md:flex-row">
+          <Bouton variante="secondaire" onClick={() => setModificationOuverte(true)}>
+            Modifier l'identité
+          </Bouton>
           <Bouton variante="secondaire" onClick={() => setMotDePasseOuvert(true)}>
             Réinitialiser le mot de passe
           </Bouton>
@@ -202,7 +200,7 @@ export function FicheCompte() {
             {estJoueur
               ? compte.tournois.map((inscription) => (
                   <CarteStatut key={inscription.tournoi.id} ton="primaire">
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex flex-col items-start gap-2 md:flex-row md:items-center md:justify-between md:gap-4">
                       <div>
                         <p className="font-medium">{inscription.tournoi.nom}</p>
                         <p className="text-sm text-text-mute">
@@ -222,7 +220,7 @@ export function FicheCompte() {
                 ))
               : compte.tournois.map((tournoi) => (
                   <CarteStatut key={tournoi.id} ton="primaire">
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex flex-col items-start gap-2 md:flex-row md:items-center md:justify-between md:gap-4">
                       <div>
                         <p className="font-medium">{tournoi.nom}</p>
                         <p className="text-sm text-text-mute">

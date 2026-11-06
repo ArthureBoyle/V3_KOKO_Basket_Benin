@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router'
 import { CartePage } from '../../components/CartePage'
 import { EnTetePage } from '../../components/EnTetePage'
 import { BadgeStatutTournoi } from '../../components/ui/Badge'
-import { Ballon } from '../../components/ui/Ballon'
 import { Carreau } from '../../components/ui/Carreau'
 import { EtatVide } from '../../components/ui/EtatVide'
 import { Tableau, type Colonne } from '../../components/ui/Tableau'
@@ -13,6 +12,7 @@ import { formaterJour } from '../../lib/format'
 import { comparerTexte } from '../../lib/tri'
 import type { InscriptionJoueur } from '../../types/api'
 import { useMesTournoisJoueur } from './api'
+import { CartesTournoisJoueur } from './CartesTournoisJoueur'
 
 const COLONNES: Colonne<InscriptionJoueur>[] = [
   {
@@ -61,7 +61,6 @@ export function AccueilJoueur() {
       <EnTetePage
         titre="Mes tournois"
         description={`Bonjour ${session?.prenom}.`}
-        icone={<Ballon mode="arret" className="size-6" />}
       />
 
       <div className="grid grid-cols-2 gap-3">
@@ -73,27 +72,32 @@ export function AccueilJoueur() {
         </Carreau>
       </div>
 
-      <CartePage>
+      <CartePage sansFondMobile>
         <h2 className="mb-4 text-xl font-medium">En ce moment</h2>
         {isError ? (
           <p role="alert" className="text-sm text-danger">
             {messageErreurApi(error)}
           </p>
         ) : (
-          <Tableau
-            libelle="Tournois en cours ou à venir"
-            colonnes={COLONNES}
-            lignes={tournoisActifsOuAVenir}
-            cleLigne={(l) => l.tournoi.id}
-            lienLigne={(l) => `/joueur/tournois/${l.tournoi.id}`}
-            chargement={isLoading}
-            vide={
-              <EtatVide
-                titre="Rien pour le moment"
-                description="Aucun tournoi en cours ou à venir où tu es certifié."
+          <>
+            {tournoisActifsOuAVenir.length > 0 && <CartesTournoisJoueur lignes={tournoisActifsOuAVenir} />}
+            <div className={tournoisActifsOuAVenir.length > 0 ? 'max-md:hidden' : ''}>
+              <Tableau
+                libelle="Tournois en cours ou à venir"
+                colonnes={COLONNES}
+                lignes={tournoisActifsOuAVenir}
+                cleLigne={(l) => l.tournoi.id}
+                lienLigne={(l) => `/joueur/tournois/${l.tournoi.id}`}
+                chargement={isLoading}
+                vide={
+                  <EtatVide
+                    titre="Rien pour le moment"
+                    description="Aucun tournoi en cours ou à venir où tu es certifié."
+                  />
+                }
               />
-            }
-          />
+            </div>
+          </>
         )}
       </CartePage>
     </section>

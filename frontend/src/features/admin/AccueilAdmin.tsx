@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router'
 import { CartePage } from '../../components/CartePage'
 import { EnTetePage } from '../../components/EnTetePage'
 import { Badge } from '../../components/ui/Badge'
-import { Ballon } from '../../components/ui/Ballon'
 import { Carreau } from '../../components/ui/Carreau'
 import { EtatVide } from '../../components/ui/EtatVide'
 import { Tableau, type Colonne } from '../../components/ui/Tableau'
@@ -13,6 +12,7 @@ import { messageErreurApi } from '../../lib/erreurs'
 import { comparerNombre } from '../../lib/tri'
 import type { TournoiAdmin } from '../../types/api'
 import { useTournois } from '../tournois/api'
+import { CartesTournois } from '../tournois/CartesTournois'
 
 const COLONNES_ACTION: Colonne<TournoiAdmin>[] = [
   {
@@ -76,7 +76,6 @@ export function AccueilAdmin() {
       <EnTetePage
         titre="Supervision"
         description={`Bonjour ${session?.prenom}.`}
-        icone={<Ballon mode="arret" className="size-6" />}
       />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -96,13 +95,16 @@ export function AccueilAdmin() {
         </Carreau>
       </div>
 
-      <CartePage>
+      <CartePage sansFondMobile>
         <h2 className="mb-4 text-xl font-medium">Nécessite une action</h2>
         {erreurTournois ? (
           <p role="alert" className="text-sm text-danger">
             {messageErreurApi(erreurTournoisMsg)}
           </p>
         ) : (
+          <>
+            {tournoisAvecAction.length > 0 && <CartesTournois tournois={tournoisAvecAction} lienBase="/admin/tournois" />}
+            <div className={tournoisAvecAction.length > 0 ? 'max-md:hidden' : ''}>
           <Tableau
             libelle="Tournois avec des scores à saisir"
             colonnes={COLONNES_ACTION}
@@ -117,6 +119,8 @@ export function AccueilAdmin() {
               />
             }
           />
+            </div>
+          </>
         )}
       </CartePage>
     </section>

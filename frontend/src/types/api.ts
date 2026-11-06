@@ -315,6 +315,7 @@ export interface EquipeClassee {
   id: number
   nom: string
   couleur: string
+  logo?: string | null
   victoires: number
   defaites: number
   points: number
@@ -422,6 +423,7 @@ export interface EquipeMatchJoueur {
   id: number
   nom: string
   couleur: string
+  logo?: string | null
 }
 
 // GET /joueurs/moi/matchs?tournoiId= — calendrier COMPLET du tournoi

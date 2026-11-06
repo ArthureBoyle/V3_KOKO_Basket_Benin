@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Badge } from '../../components/ui/Badge'
 import { Champ } from '../../components/ui/Champ'
 import { EtatVide } from '../../components/ui/EtatVide'
+import { LogoEquipe } from '../../components/ui/LogoEquipe'
 import { Onglets, PanneauOnglet } from '../../components/ui/Onglets'
 import { Tableau, type Colonne } from '../../components/ui/Tableau'
 import { messageErreurApi } from '../../lib/erreurs'
@@ -9,6 +10,7 @@ import { comparerNombre, comparerTexte } from '../../lib/tri'
 import type { EquipeClassee, JoueurClasse } from '../../types/api'
 import { useClassementEquipes, useClassementJoueurs } from '../tournois/apiClassement'
 import { medaille, styleLignePodium } from '../tournois/constantes'
+import { ClassementEquipesMobile, ClassementJoueursMobile } from '../tournois/ClassementMobile'
 
 interface Props {
   tournoiId: number
@@ -154,7 +156,7 @@ const COLONNES_EQUIPES: Colonne<EquipeClassee>[] = [
     largeur: '2fr',
     rendu: (e) => (
       <span className="inline-flex items-center gap-2">
-        <span aria-hidden="true" className="size-3 shrink-0 rounded-full border border-border" style={{ backgroundColor: e.couleur }} />
+        <LogoEquipe couleur={e.couleur} logo={e.logo} className="size-5" />
         {e.nom}
       </span>
     ),
@@ -202,7 +204,13 @@ export function OngletClassementJoueur({ tournoiId, monJoueurId }: Props) {
 
   return (
     <div className="flex flex-col gap-5">
-      <Onglets libelle="Type de classement" variante="segmentee" onglets={ONGLETS} actif={onglet} onChanger={(id) => setOnglet(id as IdOnglet)} />
+      <Onglets
+        libelle="Type de classement"
+        variante="segmentee"
+        onglets={ONGLETS}
+        actif={onglet}
+        onChanger={(id) => setOnglet(id as IdOnglet)}
+      />
 
       <PanneauOnglet id={onglet}>
         {onglet === 'classement-joueurs' ? (
@@ -223,22 +231,36 @@ export function OngletClassementJoueur({ tournoiId, monJoueurId }: Props) {
                 {messageErreurApi(joueurs.error)}
               </p>
             ) : (
-              <Tableau
-                key={matchsJoues ?? 'tous'}
-                libelle="Classement des joueurs"
-                colonnes={colonnesJoueurs(nomEquipe, monJoueurId)}
-                lignes={joueurs.data}
-                cleLigne={(j) => j.joueurId}
-                styleLigne={(j) => styleLigneMoi(j.rang, j.joueurId === monJoueurId)}
-                chargement={joueurs.isLoading}
-                actualisation={joueurs.isFetching && !joueurs.isLoading}
-                vide={
-                  <EtatVide
-                    titre={matchsJoues !== null ? 'Aucun joueur avec ce nombre de matchs' : 'Aucun classement disponible'}
-                    description="Un classement apparaît dès qu'un match est terminé avec des statistiques saisies."
+              <>
+                {joueurs.data && joueurs.data.length > 0 && (
+                  <ClassementJoueursMobile
+                    joueurs={joueurs.data}
+                    nomEquipe={nomEquipe}
+                    monJoueurId={monJoueurId}
+                    styleMoi={styleLigneMoi}
                   />
-                }
-              />
+                )}
+                <div className={joueurs.data && joueurs.data.length > 0 ? 'max-md:hidden' : ''}>
+                  <Tableau
+                    key={matchsJoues ?? 'tous'}
+                    libelle="Classement des joueurs"
+                    colonnes={colonnesJoueurs(nomEquipe, monJoueurId)}
+                    lignes={joueurs.data}
+                    cleLigne={(j) => j.joueurId}
+                    styleLigne={(j) => styleLigneMoi(j.rang, j.joueurId === monJoueurId)}
+                    chargement={joueurs.isLoading}
+                    actualisation={joueurs.isFetching && !joueurs.isLoading}
+                    vide={
+                      <EtatVide
+                        titre={
+                          matchsJoues !== null ? 'Aucun joueur avec ce nombre de matchs' : 'Aucun classement disponible'
+                        }
+                        description="Un classement apparaît dès qu'un match est terminé avec des statistiques saisies."
+                      />
+                    }
+                  />
+                </div>
+              </>
             )}
           </div>
         ) : equipes.isError ? (
@@ -246,16 +268,26 @@ export function OngletClassementJoueur({ tournoiId, monJoueurId }: Props) {
             {messageErreurApi(equipes.error)}
           </p>
         ) : (
-          <Tableau
-            libelle="Classement des équipes"
-            colonnes={COLONNES_EQUIPES}
-            lignes={equipes.data}
-            cleLigne={(e) => e.id}
-            styleLigne={(e) => styleLignePodium(e.rang)}
-            chargement={equipes.isLoading}
-            actualisation={equipes.isFetching && !equipes.isLoading}
-            vide={<EtatVide titre="Aucune équipe" description="Le classement des équipes apparaît dès le premier match terminé." />}
-          />
+          <>
+            {equipes.data && equipes.data.length > 0 && <ClassementEquipesMobile equipes={equipes.data} />}
+            <div className={equipes.data && equipes.data.length > 0 ? 'max-md:hidden' : ''}>
+              <Tableau
+                libelle="Classement des équipes"
+                colonnes={COLONNES_EQUIPES}
+                lignes={equipes.data}
+                cleLigne={(e) => e.id}
+                styleLigne={(e) => styleLignePodium(e.rang)}
+                chargement={equipes.isLoading}
+                actualisation={equipes.isFetching && !equipes.isLoading}
+                vide={
+                  <EtatVide
+                    titre="Aucune équipe"
+                    description="Le classement des équipes apparaît dès le premier match terminé."
+                  />
+                }
+              />
+            </div>
+          </>
         )}
       </PanneauOnglet>
     </div>

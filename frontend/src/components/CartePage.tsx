@@ -6,6 +6,15 @@ import type { ReactNode } from 'react'
 // cartes") appliquee au niveau de la page, pas seulement de la sidebar.
 // Pas de backdrop-filter (couteux, exclu du motion system) : juste un
 // fond plein, comme toutes les autres cartes de l'appli.
-export function CartePage({ children }: { children: ReactNode }) {
-  return <div className="rounded-xl border border-border bg-surface p-6">{children}</div>
+// sansFondMobile : sur mobile le panneau disparait (pas de cadre, pas de
+// fond) — les cartes qu'il contient flottent alors separees, le motif de
+// fond visible entre elles. Desktop inchange.
+export function CartePage({ children, sansFondMobile = false }: { children: ReactNode; sansFondMobile?: boolean }) {
+  return (
+    <div
+      className={`rounded-xl border border-border bg-surface p-6 ${sansFondMobile ? 'max-md:border-0 max-md:bg-transparent max-md:p-0' : ''}`}
+    >
+      {children}
+    </div>
+  )
 }

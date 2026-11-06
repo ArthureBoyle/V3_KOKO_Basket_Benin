@@ -63,6 +63,33 @@ export function formaterHeureMatch(valeur: string | Date): string {
   return formatHeure.format(new Date(valeur))
 }
 
+// Periode d'un tournoi, la plus courte possible :
+// "6 – 13 novembre 2026" / "28 sept. – 4 oct. 2026" / "30 déc. 2026 – 3 janv. 2027".
+const formatJourMois = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+const formatJourMoisLong = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', timeZone: 'UTC' })
+export function formaterPeriode(debut: string | Date, fin: string | Date): string {
+  const d = new Date(debut)
+  const f = new Date(fin)
+  const memeAnnee = d.getUTCFullYear() === f.getUTCFullYear()
+  const memeMois = memeAnnee && d.getUTCMonth() === f.getUTCMonth()
+  if (d.getTime() === f.getTime()) return formatJour.format(d)
+  if (memeMois) return `${d.getUTCDate()} – ${formatJourMoisLong.format(f)} ${f.getUTCFullYear()}`
+  if (memeAnnee) return `${formatJourMois.format(d)} – ${formatJourMois.format(f)} ${f.getUTCFullYear()}`
+  return `${formatJour.format(d)} – ${formatJour.format(f)}`
+}
+
+// "vendredi 6 novembre 2026", a l'heure du Benin (fiche de match).
+const formatJourLongBenin = new Intl.DateTimeFormat('fr-FR', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  timeZone: FUSEAU_BENIN,
+})
+export function formaterJourLongMatch(valeur: string | Date): string {
+  return formatJourLongBenin.format(new Date(valeur))
+}
+
 export function formaterNombre(nombre: number): string {
   return formatNombre.format(nombre)
 }

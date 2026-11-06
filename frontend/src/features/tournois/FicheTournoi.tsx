@@ -1,9 +1,10 @@
+import { Eye } from 'lucide-react'
 import { useState } from 'react'
 import { useParams } from 'react-router'
 import { ApiError } from '../../api/client'
 import { CartePage } from '../../components/CartePage'
-import { EnTetePage } from '../../components/EnTetePage'
 import { Ballon } from '../../components/ui/Ballon'
+import { BlocInfo } from '../../components/ui/BlocInfo'
 import { BadgeStatutTournoi } from '../../components/ui/Badge'
 import { Bouton } from '../../components/ui/Bouton'
 import { Carreau } from '../../components/ui/Carreau'
@@ -13,7 +14,7 @@ import { Onglets, PanneauOnglet } from '../../components/ui/Onglets'
 import { SqueletteLignes } from '../../components/ui/Squelette'
 import { useSession } from '../auth/session'
 import { messageErreurApi } from '../../lib/erreurs'
-import { formaterJour } from '../../lib/format'
+import { formaterPeriode } from '../../lib/format'
 import { useTournoi } from './api'
 import { LIBELLES_ALGORITHME } from './constantes'
 import { DialogueCriteresAlgorithme } from './DialogueCriteresAlgorithme'
@@ -78,19 +79,28 @@ export function FicheTournoi() {
       <LienRetour to={estAdmin ? '/admin/tournois' : '/organisateur/tournois'}>Retour aux tournois</LienRetour>
 
       <CartePage>
-        <EnTetePage
-          titre={tournoi.nom}
-          description={tournoi.lieu}
-          icone={<Ballon mode="arret" className="size-6" />}
-          actions={
-            <div className="flex items-center gap-3">
-              <BadgeStatutTournoi statut={tournoi.statut} />
-              <Bouton variante="secondaire" onClick={() => setModificationOuverte(true)}>
-                Modifier les informations
-              </Bouton>
-            </div>
-          }
-        />
+        {/* Bloc d'identite : titre + statut, infos en petits blocs
+            etiquetes, puis l'action — jamais une phrase collee. */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-border bg-elevated">
+              <Ballon mode="arret" className="size-6" />
+            </span>
+            <h1 className="min-w-0 text-2xl leading-tight font-semibold break-words">{tournoi.nom}</h1>
+          </div>
+          <BadgeStatutTournoi statut={tournoi.statut} />
+        </div>
+
+        <div className="mt-6 grid grid-cols-2 gap-3">
+          <BlocInfo libelle="Lieu">{tournoi.lieu}</BlocInfo>
+          <BlocInfo libelle="Dates">{formaterPeriode(tournoi.dateDebut, tournoi.dateFin)}</BlocInfo>
+        </div>
+
+        <div className="mt-4 mb-8">
+          <Bouton variante="secondaire" className="max-md:w-full" onClick={() => setModificationOuverte(true)}>
+            Modifier les informations
+          </Bouton>
+        </div>
 
         {/* segmentee : ces 6 onglets SONT le contenu de la fiche (Infos,
             Licences, Equipes...), pas une navigation secondaire — de
@@ -106,13 +116,12 @@ export function FicheTournoi() {
         <PanneauOnglet id={onglet}>
           <div className="mt-6">
             {onglet === 'infos' && (
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                <Carreau libelle="Organisateur" centrer onClick={estAdmin ? () => setReassignationOuverte(true) : undefined}>
-                  {tournoi.organisateur.prenom} {tournoi.organisateur.nom}
-                </Carreau>
-                <Carreau libelle="Dates" onClick={estAdmin ? () => setModificationOuverte(true) : undefined}>
-                  {formaterJour(tournoi.dateDebut)} – {formaterJour(tournoi.dateFin)}
-                </Carreau>
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                <div className="col-span-2 md:col-span-1">
+                  <Carreau libelle="Organisateur" centrer onClick={estAdmin ? () => setReassignationOuverte(true) : undefined}>
+                    {tournoi.organisateur.prenom} {tournoi.organisateur.nom}
+                  </Carreau>
+                </div>
                 <Carreau libelle="Licences max" centrer onClick={estAdmin ? () => setModificationOuverte(true) : undefined}>
                   <span className="tabular-nums">{tournoi.licencesMax}</span>
                 </Carreau>
@@ -140,7 +149,7 @@ export function FicheTournoi() {
                     title="Voir les critères de cet algorithme"
                     className="absolute top-2 right-2 rounded-full p-1 text-text-mute transition-colors duration-150 hover:bg-surface hover:text-text"
                   >
-                    👁
+                    <Eye aria-hidden="true" className="size-4" />
                   </button>
                 </div>
                 <Carreau libelle="Lissage (k)" centrer onClick={estAdmin ? () => setModificationOuverte(true) : undefined}>

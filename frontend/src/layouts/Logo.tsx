@@ -38,9 +38,9 @@ export function Logo({ cheminAccueil }: Props) {
       onClick={cliquer}
       className="inline-flex w-fit items-center transition-transform duration-[180ms] ease-[cubic-bezier(0.2,0.8,0.3,1)]"
     >
-      <span className="text-[32px] leading-none font-semibold italic">KO</span>
-      <Ballon mode={nombreEnCours > 0 ? 'rafraichit' : 'arret'} className="mx-[3px] size-7" />
-      <span className="text-[32px] leading-none font-semibold italic [transform:scaleX(-1)]">KO</span>
+      <span className="text-[28px] md:text-[40px] leading-none font-semibold italic">KO</span>
+      <Ballon mode={nombreEnCours > 0 ? 'rafraichit' : 'arret'} className="mx-[3px] size-6 md:mx-[4px] md:size-9" />
+      <span className="text-[28px] md:text-[40px] leading-none font-semibold italic [transform:scaleX(-1)]">KO</span>
     </button>
   )
 }

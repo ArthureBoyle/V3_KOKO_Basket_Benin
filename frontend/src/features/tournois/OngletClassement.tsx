@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { Badge } from '../../components/ui/Badge'
 import { Champ } from '../../components/ui/Champ'
 import { EtatVide } from '../../components/ui/EtatVide'
+import { LogoEquipe } from '../../components/ui/LogoEquipe'
 import { Onglets, PanneauOnglet } from '../../components/ui/Onglets'
+import { ClassementEquipesMobile, ClassementJoueursMobile } from './ClassementMobile'
 import { Tableau, type Colonne } from '../../components/ui/Tableau'
 import { messageErreurApi } from '../../lib/erreurs'
 import { comparerNombre, comparerTexte } from '../../lib/tri'
@@ -168,7 +170,7 @@ const COLONNES_EQUIPES: Colonne<EquipeClassee>[] = [
     largeur: '2fr',
     rendu: (e) => (
       <span className="inline-flex items-center gap-2">
-        <span aria-hidden="true" className="size-3 shrink-0 rounded-full border border-border" style={{ backgroundColor: e.couleur }} />
+        <LogoEquipe couleur={e.couleur} logo={e.logo} className="size-5" />
         {e.nom}
       </span>
     ),
@@ -238,6 +240,11 @@ export function OngletClassement({ tournoiId, equipes: equipesDuTournoi, algorit
                 {messageErreurApi(joueurs.error)}
               </p>
             ) : (
+              <>
+                {joueurs.data && joueurs.data.length > 0 && (
+                  <ClassementJoueursMobile joueurs={joueurs.data} nomEquipe={nomEquipe} />
+                )}
+                <div className={joueurs.data && joueurs.data.length > 0 ? 'max-md:hidden' : ''}>
               <Tableau
                 key={matchsJoues ?? 'tous'}
                 libelle="Classement des joueurs"
@@ -254,6 +261,8 @@ export function OngletClassement({ tournoiId, equipes: equipesDuTournoi, algorit
                   />
                 }
               />
+                </div>
+              </>
             )}
           </div>
         ) : equipes.isError ? (
@@ -261,6 +270,9 @@ export function OngletClassement({ tournoiId, equipes: equipesDuTournoi, algorit
             {messageErreurApi(equipes.error)}
           </p>
         ) : (
+          <>
+          {equipes.data && equipes.data.length > 0 && <ClassementEquipesMobile equipes={equipes.data} />}
+          <div className={equipes.data && equipes.data.length > 0 ? 'max-md:hidden' : ''}>
           <Tableau
             libelle="Classement des équipes"
             colonnes={COLONNES_EQUIPES}
@@ -271,6 +283,8 @@ export function OngletClassement({ tournoiId, equipes: equipesDuTournoi, algorit
             actualisation={equipes.isFetching && !equipes.isLoading}
             vide={<EtatVide titre="Aucune équipe" description="Crée des équipes (onglet Équipes) pour voir un classement." />}
           />
+          </div>
+          </>
         )}
       </PanneauOnglet>
     </div>

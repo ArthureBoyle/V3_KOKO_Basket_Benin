@@ -56,9 +56,9 @@ export function BoutonRafraichir({ enCours, onRafraichir, derniereMiseAJour }: B
         }}
         aria-label="Rafraîchir"
         aria-busy={actif}
-        className="rounded-full p-1.5 transition-colors duration-150 hover:bg-elevated"
+        className="rounded-full p-1.5 max-md:p-2 transition-colors duration-150 hover:bg-elevated"
       >
-        <Ballon mode={actif && !mouvementReduit ? 'rafraichit' : 'arret'} onFinTour={finDeTour} className="size-7" />
+        <Ballon mode={actif && !mouvementReduit ? 'rafraichit' : 'arret'} onFinTour={finDeTour} className="size-7 md:size-10" />
       </button>
     </div>
   )

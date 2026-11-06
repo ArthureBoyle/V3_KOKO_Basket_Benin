@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNotifier } from '../../components/notifications/contexte'
-import type { TonBadge } from '../../components/ui/Badge'
+import { Badge, type TonBadge } from '../../components/ui/Badge'
+import { LogoEquipe } from '../../components/ui/LogoEquipe'
 import { Bouton } from '../../components/ui/Bouton'
 import { CarteStatut } from '../../components/ui/CarteStatut'
 import { DialogueConfirmation } from '../../components/ui/DialogueConfirmation'
@@ -9,6 +10,7 @@ import { SqueletteLignes } from '../../components/ui/Squelette'
 import { messageErreurApi } from '../../lib/erreurs'
 import { formaterHeureMatch, formaterJourMatch } from '../../lib/format'
 import type { EquipeResumeTournoi, MatchTournoi, StatutMatch } from '../../types/api'
+import { useEquipes } from './apiEquipes'
 import { useAnnulerMatch, useMatchs, useReactiverMatch, useReporterMatch } from './apiMatchs'
 import { DialogueCreerMatch } from './DialogueCreerMatch'
 import { DialogueGererMatch } from './DialogueGererMatch'
@@ -43,38 +45,83 @@ const LIBELLE_STATUT: Record<StatutMatch, string> = {
   ANNULE: 'Annulé',
 }
 
-// Petit bouton pilule avec remplissage au survol (effet par defaut du
-// projet, voir styles/index.css) : jamais un simple lien souligne pour
-// une action, meme secondaire.
-function BoutonAction({
-  ton,
-  onClick,
-  disabled,
-  children,
-}: {
-  ton: 'primaire' | 'danger'
-  onClick: () => void
-  disabled?: boolean
-  children: React.ReactNode
-}) {
-  const classesTon =
-    ton === 'primaire'
-      ? 'border-primary-text/30 bg-primary-text/12 text-primary-text'
-      : 'border-danger/30 bg-danger/12 text-danger'
+interface InfoEquipe {
+  nom: string
+  couleur: string
+  logo: string | null
+}
+
+const STATUTS_A_VENIR: StatutMatch[] = ['A_VENIR', 'REPORTE']
+
+function LigneEquipe({ info, score }: { info: InfoEquipe; score: number | null }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={`effet-remplissage effet-remplissage-${ton} whitespace-nowrap rounded-md border px-2.5 py-1 text-xs font-medium transition-[border-color] duration-150 disabled:opacity-60 ${classesTon}`}
-    >
-      <span className="contenu-remplissage">{children}</span>
-    </button>
+    <p className="flex items-center gap-3">
+      <LogoEquipe couleur={info.couleur} logo={info.logo} className="size-6" />
+      <span title={info.nom} className="line-clamp-2 min-w-0 flex-1 font-medium break-words">
+        {info.nom}
+      </span>
+      {score !== null && <span className="shrink-0 font-semibold tabular-nums">{score}</span>}
+    </p>
+  )
+}
+
+// Une carte = un bouton : toucher le match ouvre le panneau "Gerer"
+// (score, report, annulation...). Le statut normal est dit par la section ;
+// le badge ne reste que pour un cas a signaler.
+function SectionMatchs({
+  titre,
+  matchs,
+  infoEquipe,
+  onChoisir,
+}: {
+  titre: string
+  matchs: MatchTournoi[]
+  infoEquipe: (id: number) => InfoEquipe
+  onChoisir: (m: MatchTournoi) => void
+}) {
+  if (matchs.length === 0) return null
+  return (
+    <section>
+      <h3 className="mb-3 flex items-center gap-2 text-xs font-medium tracking-[0.08em] text-text-mute uppercase">
+        {titre}
+        <span className="rounded-md bg-elevated px-2 py-0.5 text-2xs tabular-nums">{matchs.length}</span>
+      </h3>
+      <div className="flex flex-col gap-2.5">
+        {matchs.map((match) => (
+          <button
+            key={match.id}
+            type="button"
+            onClick={() => onChoisir(match)}
+            aria-label={`Gérer le match ${infoEquipe(match.equipe1Id).nom} contre ${infoEquipe(match.equipe2Id).nom}`}
+            className="block w-full text-left"
+          >
+            <CarteStatut ton={TONS_STATUT[match.statut]}>
+              <p className="font-mono text-2xs tracking-wide text-text-mute uppercase">
+                {match.type} · {formaterJourMatch(match.date)} · {formaterHeureMatch(match.date)}
+              </p>
+              <div className="mt-2 flex items-center gap-3">
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                  <LigneEquipe info={infoEquipe(match.equipe1Id)} score={match.score1} />
+                  <LigneEquipe info={infoEquipe(match.equipe2Id)} score={match.score2} />
+                </div>
+                {(match.statut === 'REPORTE' || match.statut === 'ANNULE') && (
+                  <Badge ton={match.statut === 'ANNULE' ? 'danger' : 'alerte'}>{LIBELLE_STATUT[match.statut]}</Badge>
+                )}
+                <span aria-hidden="true" className="text-text-mute">
+                  ›
+                </span>
+              </div>
+            </CarteStatut>
+          </button>
+        ))}
+      </div>
+    </section>
   )
 }
 
 export function OngletMatchs({ tournoiId, equipes, estAdmin = true }: Props) {
   const { data: matchs, isLoading, isError, error } = useMatchs(tournoiId)
+  const { data: equipesCompletes } = useEquipes(tournoiId)
   const [creationOuverte, setCreationOuverte] = useState(false)
   const [matchScore, setMatchScore] = useState<MatchTournoi | null>(null)
   const [matchReprog, setMatchReprog] = useState<MatchTournoi | null>(null)
@@ -96,6 +143,16 @@ export function OngletMatchs({ tournoiId, equipes, estAdmin = true }: Props) {
   }
 
   const nomEquipe = (id: number) => equipes.find((e) => e.id === id)?.nom ?? '—'
+  const infoEquipe = (id: number): InfoEquipe => {
+    const complete = equipesCompletes?.find((e) => e.id === id)
+    return { nom: nomEquipe(id), couleur: complete?.couleur ?? 'var(--secondary)', logo: complete?.logo ?? null }
+  }
+  const parDate = (a: MatchTournoi, b: MatchTournoi) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  const sections = {
+    aSaisir: (matchs ?? []).filter((m) => m.statut === 'EN_RETARD').sort(parDate),
+    aVenir: (matchs ?? []).filter((m) => STATUTS_A_VENIR.includes(m.statut)).sort(parDate),
+    termines: (matchs ?? []).filter((m) => m.statut === 'TERMINE' || m.statut === 'ANNULE').sort((a, b) => parDate(b, a)),
+  }
   const pasAssezEquipes = equipes.length < 2
   const nombre = matchs?.length ?? 0
 
@@ -117,39 +174,10 @@ export function OngletMatchs({ tournoiId, equipes, estAdmin = true }: Props) {
       {nombre === 0 ? (
         <EtatVide titre="Aucun match" description="Programme le premier match de ce tournoi." />
       ) : (
-        <div className="flex flex-col gap-2.5">
-          {matchs!.map((match) => (
-            <CarteStatut key={match.id} ton={TONS_STATUT[match.statut]}>
-              {/* Une seule ligne de metadonnees (statut/poule/date/heure/
-                  lieu), mono, au-dessus des equipes — plus de pilule de
-                  statut ni de 2e ligne repetant la date en bas. */}
-              <p className="font-mono text-2xs tracking-wide text-text-mute uppercase">
-                {LIBELLE_STATUT[match.statut]} · {match.type} · {formaterJourMatch(match.date)} ·{' '}
-                {formaterHeureMatch(match.date)} · {match.lieu}
-              </p>
-              <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
-                <p className="font-medium">
-                  {nomEquipe(match.equipe1Id)} <span className="text-text-mute">vs</span> {nomEquipe(match.equipe2Id)}
-                </p>
-                <div className="flex flex-wrap items-center gap-2">
-                  {match.score1 !== null && match.score2 !== null && (
-                    <span className="tabular-nums font-medium">
-                      {match.score1} – {match.score2}
-                    </span>
-                  )}
-
-                  {/* Toujours LE MEME bouton, sur toutes les cartes quel que
-                      soit le statut : jamais une rangee de boutons dont le
-                      nombre change d'une carte a l'autre (incoherence
-                      visuelle) — le detail des actions possibles/impossibles
-                      est dans le panneau qu'il ouvre (DialogueGererMatch). */}
-                  <BoutonAction ton="primaire" onClick={() => setMatchGere(match)}>
-                    ✏️ Gérer
-                  </BoutonAction>
-                </div>
-              </div>
-            </CarteStatut>
-          ))}
+        <div className="flex flex-col gap-7">
+          <SectionMatchs titre="Score à saisir" matchs={sections.aSaisir} infoEquipe={infoEquipe} onChoisir={setMatchGere} />
+          <SectionMatchs titre="À venir" matchs={sections.aVenir} infoEquipe={infoEquipe} onChoisir={setMatchGere} />
+          <SectionMatchs titre="Terminés" matchs={sections.termines} infoEquipe={infoEquipe} onChoisir={setMatchGere} />
         </div>
       )}
 

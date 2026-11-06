@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import { CartePage } from '../../components/CartePage'
 import { EnTetePage } from '../../components/EnTetePage'
 import { Badge } from '../../components/ui/Badge'
-import { Ballon } from '../../components/ui/Ballon'
 import { Bouton } from '../../components/ui/Bouton'
 import { Champ } from '../../components/ui/Champ'
 import { EtatVide } from '../../components/ui/EtatVide'
@@ -13,6 +12,7 @@ import { formaterAge } from '../../lib/format'
 import { comparerNombre, comparerTexte } from '../../lib/tri'
 import type { Compte } from '../../types/api'
 import { useComptes } from './api'
+import { CartesComptes } from './CartesComptes'
 import { DialogueCreerJoueur } from './DialogueCreerJoueur'
 import { DialogueCreerOrganisateur } from './DialogueCreerOrganisateur'
 
@@ -118,11 +118,10 @@ export function ListeComptes() {
 
   return (
     <section>
-      <CartePage>
+      <CartePage sansFondMobile>
         <EnTetePage
           titre="Comptes"
           description="Joueurs et organisateurs créés par l'administration."
-          icone={<Ballon mode="arret" className="size-6" />}
           actions={
             <Bouton magnetique onClick={() => setCreationOuverte(true)}>
               Créer {onglet === 'joueurs' ? 'un joueur' : 'un organisateur'}
@@ -156,6 +155,9 @@ export function ListeComptes() {
               {messageErreurApi(error)}
             </p>
           ) : (
+            <>
+            {lignes && lignes.length > 0 && <CartesComptes comptes={lignes} />}
+            <div className={lignes && lignes.length > 0 ? 'max-md:hidden' : ''}>
             <Tableau
               // Cle = onglet + recherche : force un vrai remontage de toutes
               // les cartes a chaque changement, pour que la cascade d'apparition
@@ -182,6 +184,8 @@ export function ListeComptes() {
                 />
               }
             />
+            </div>
+            </>
           )}
         </PanneauOnglet>
       </CartePage>

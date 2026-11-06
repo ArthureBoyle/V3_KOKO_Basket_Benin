@@ -17,6 +17,49 @@ interface MenuCompteProps {
 // Contenu partage entre le popover desktop (MenuCompte, ancre en bas de
 // la sidebar) et la fenetre mobile (DialogueCompte, voir LayoutEspace) —
 // memes reglages, deux presentations differentes autour du meme JSX.
+// Liste de choix (radios) a la place d'un <select> natif : le menu
+// deroulant du navigateur est clair, enorme et impossible a styler sur
+// mobile. Ici chaque option est une ligne tactile, la choisie est cerclee.
+function ChoixListe({
+  libelle,
+  options,
+  valeur,
+  onChoisir,
+}: {
+  libelle: string
+  options: readonly { id: string; libelle: string }[]
+  valeur: string
+  onChoisir: (id: string) => void
+}) {
+  return (
+    <div role="radiogroup" aria-label={libelle} className="flex flex-col gap-1.5 px-3 py-2">
+      <p className="text-xs font-medium tracking-[0.08em] text-text-mute uppercase">{libelle}</p>
+      {options.map((option) => {
+        const actif = option.id === valeur
+        return (
+          <button
+            key={option.id}
+            type="button"
+            role="radio"
+            aria-checked={actif}
+            onClick={() => onChoisir(option.id)}
+            className={`flex items-center justify-between gap-3 rounded-md border px-3 py-2.5 text-left text-sm transition-colors duration-150 ${
+              actif ? 'border-primary bg-elevated text-text' : 'border-border text-text-mute hover:text-text'
+            }`}
+          >
+            {option.libelle}
+            {actif && (
+              <span aria-hidden="true" className="text-primary-text">
+                ✓
+              </span>
+            )}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 export function ContenuMenuCompte({
   session,
   theme,
@@ -40,45 +83,22 @@ export function ContenuMenuCompte({
       <p className="truncate px-3 py-1.5 text-xs text-text-mute">{session.email}</p>
       <div role="separator" className="my-1 border-t border-border" />
 
-      <div role="menuitem" className="flex items-center justify-between gap-3 px-3 py-1.5">
-        <span className="text-sm">Thème</span>
-        <select
-          value={theme}
-          onChange={(e) => {
-            if (estTheme(e.target.value)) onChangerTheme(e.target.value)
-          }}
-          className="rounded-md border border-border bg-surface px-2 py-1 text-sm text-text"
-        >
-          {THEMES.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.libelle}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div role="menuitem" className="flex items-center justify-between gap-3 px-3 py-1.5">
-        {/* "Motif de fond" (14 caracteres) passait sur 3 lignes dans le
-            menu (224px) et poussait le select hors du cadre — un select
-            natif prend la largeur de sa plus longue option ("Terrain
-            (lignes de raquette)") s'il n'est pas borne. Libelle court
-            (tient sur une ligne) + largeur du select fixee : les deux
-            tiennent toujours cote a cote, quelle que soit l'option choisie. */}
-        <span className="shrink-0 text-sm">MDF</span>
-        <select
-          value={motif}
-          onChange={(e) => {
-            if (estMotifFond(e.target.value)) onChangerMotif(e.target.value)
-          }}
-          className="w-32 rounded-md border border-border bg-surface px-2 py-1 text-sm text-text"
-        >
-          {MOTIFS_FOND.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.libelle}
-            </option>
-          ))}
-        </select>
-      </div>
+      <ChoixListe
+        libelle="Thème"
+        options={THEMES}
+        valeur={theme}
+        onChoisir={(id) => {
+          if (estTheme(id)) onChangerTheme(id)
+        }}
+      />
+      <ChoixListe
+        libelle="Motif de fond"
+        options={MOTIFS_FOND}
+        valeur={motif}
+        onChoisir={(id) => {
+          if (estMotifFond(id)) onChangerMotif(id)
+        }}
+      />
 
       <button
         type="button"
@@ -94,12 +114,12 @@ export function ContenuMenuCompte({
         <span
           aria-hidden="true"
           className={`relative h-5 w-9 shrink-0 rounded-full transition-colors duration-150 ${
-            animationsReduites ? 'bg-primary' : 'bg-surface'
+            animationsReduites ? 'bg-primary' : 'border border-border bg-elevated'
           }`}
         >
           <span
-            className={`absolute top-0.5 size-4 rounded-full bg-text transition-[left] duration-150 ${
-              animationsReduites ? 'left-4' : 'left-0.5'
+            className={`absolute top-0.5 size-4 rounded-full transition-[left] duration-150 ${
+              animationsReduites ? 'left-4 bg-on-primary' : 'left-0.5 bg-text-mute'
             }`}
           />
         </span>

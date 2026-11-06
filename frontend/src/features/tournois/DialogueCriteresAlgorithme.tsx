@@ -16,7 +16,7 @@ function LigneCritere({ libelle, compte, note }: { libelle: string; compte: bool
         {note && <p className="mt-0.5 text-xs text-text-mute">{note}</p>}
       </div>
       <span
-        className={`shrink-0 rounded-full px-2.5 py-1 text-2xs font-medium tracking-wide uppercase ${
+        className={`shrink-0 rounded-md px-2.5 py-1 text-2xs font-medium tracking-wide uppercase ${
           compte ? 'bg-primary-text/12 text-primary-text' : 'bg-border/40 text-text-mute'
         }`}
       >

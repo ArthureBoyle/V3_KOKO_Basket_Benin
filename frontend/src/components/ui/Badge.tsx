@@ -25,7 +25,7 @@ interface BadgeProps {
 export function Badge({ ton = 'neutre', pulse = false, children }: BadgeProps) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-2xs font-medium whitespace-nowrap ${CLASSES_TON[ton]}`}
+      className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-2xs font-medium whitespace-nowrap ${CLASSES_TON[ton]}`}
     >
       {pulse && <span aria-hidden="true" className="point-pulse size-1.5 rounded-full bg-current" />}
       {children}
