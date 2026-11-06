@@ -6,11 +6,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, ApiError } from '../../api/client'
 import type { Identifiants, ReponseConnexion, Role, Utilisateur } from '../../types/api'
+import { CHEMIN_ADMIN } from '../../config/cheminAdmin'
 
 export const CLE_SESSION = ['session'] as const
 
 export const ACCUEIL_PAR_ROLE: Record<Role, string> = {
-  ADMIN: '/admin',
+  ADMIN: CHEMIN_ADMIN,
   ORGANISATEUR: '/organisateur',
   JOUEUR: '/joueur',
 }

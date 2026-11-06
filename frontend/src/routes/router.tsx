@@ -15,6 +15,7 @@ import { LayoutEspace } from '../layouts/LayoutEspace'
 import { GardeRole } from './GardeRole'
 import { PageIntrouvable } from './PageIntrouvable'
 import { RedirectionAccueil } from './RedirectionAccueil'
+import { CHEMIN_ADMIN } from '../config/cheminAdmin'
 
 // Catalogue des composants : developpement uniquement. Charge a la demande
 // et derriere import.meta.env.DEV, il est retire du build de production.
@@ -36,7 +37,7 @@ export const router = createBrowserRouter([
   { path: '/', element: <RedirectionAccueil /> },
   { path: '/connexion', element: <PageConnexion /> },
   {
-    path: '/admin',
+    path: CHEMIN_ADMIN,
     element: (
       <GardeRole role="ADMIN">
         <LayoutEspace />

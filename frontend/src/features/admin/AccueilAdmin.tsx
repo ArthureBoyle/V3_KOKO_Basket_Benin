@@ -13,6 +13,7 @@ import { comparerNombre } from '../../lib/tri'
 import type { TournoiAdmin } from '../../types/api'
 import { useTournois } from '../tournois/api'
 import { CartesTournois } from '../tournois/CartesTournois'
+import { CHEMIN_ADMIN } from '../../config/cheminAdmin'
 
 const COLONNES_ACTION: Colonne<TournoiAdmin>[] = [
   {
@@ -79,18 +80,18 @@ export function AccueilAdmin() {
       />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Carreau libelle="Tournois en cours" centrer onClick={() => navigate('/admin/tournois')}>
+        <Carreau libelle="Tournois en cours" centrer onClick={() => navigate(`${CHEMIN_ADMIN}/tournois`)}>
           <span className="text-2xl tabular-nums">{chargement ? '—' : tournoisActifs.length}</span>
         </Carreau>
-        <Carreau libelle="Tournois à venir" centrer onClick={() => navigate('/admin/tournois')}>
+        <Carreau libelle="Tournois à venir" centrer onClick={() => navigate(`${CHEMIN_ADMIN}/tournois`)}>
           <span className="text-2xl tabular-nums">{chargement ? '—' : tournoisAVenir.length}</span>
         </Carreau>
-        <Carreau libelle="Scores à saisir" centrer onClick={() => navigate('/admin/tournois')}>
+        <Carreau libelle="Scores à saisir" centrer onClick={() => navigate(`${CHEMIN_ADMIN}/tournois`)}>
           <span className={`text-2xl tabular-nums ${scoresASaisir > 0 ? 'text-warning' : ''}`}>
             {chargement ? '—' : scoresASaisir}
           </span>
         </Carreau>
-        <Carreau libelle="Comptes actifs" centrer onClick={() => navigate('/admin/comptes')}>
+        <Carreau libelle="Comptes actifs" centrer onClick={() => navigate(`${CHEMIN_ADMIN}/comptes`)}>
           <span className="text-2xl tabular-nums">{chargement ? '—' : comptesActifs}</span>
         </Carreau>
       </div>
@@ -103,14 +104,14 @@ export function AccueilAdmin() {
           </p>
         ) : (
           <>
-            {tournoisAvecAction.length > 0 && <CartesTournois tournois={tournoisAvecAction} lienBase="/admin/tournois" />}
+            {tournoisAvecAction.length > 0 && <CartesTournois tournois={tournoisAvecAction} lienBase={`${CHEMIN_ADMIN}/tournois`} />}
             <div className={tournoisAvecAction.length > 0 ? 'max-md:hidden' : ''}>
           <Tableau
             libelle="Tournois avec des scores à saisir"
             colonnes={COLONNES_ACTION}
             lignes={tournoisAvecAction}
             cleLigne={(t) => t.id}
-            lienLigne={(t) => `/admin/tournois/${t.id}`}
+            lienLigne={(t) => `${CHEMIN_ADMIN}/tournois/${t.id}`}
             chargement={chargementTournois}
             vide={
               <EtatVide

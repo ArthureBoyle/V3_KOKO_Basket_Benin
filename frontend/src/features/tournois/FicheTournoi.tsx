@@ -25,6 +25,7 @@ import { OngletEquipes } from './OngletEquipes'
 import { OngletLicences } from './OngletLicences'
 import { OngletMatchs } from './OngletMatchs'
 import { OngletStatistiques } from './OngletStatistiques'
+import { CHEMIN_ADMIN } from '../../config/cheminAdmin'
 
 type IdOnglet = 'infos' | 'licences' | 'equipes' | 'matchs' | 'classement' | 'statistiques'
 
@@ -76,7 +77,7 @@ export function FicheTournoi() {
 
   return (
     <section className="flex flex-col gap-4">
-      <LienRetour to={estAdmin ? '/admin/tournois' : '/organisateur/tournois'}>Retour aux tournois</LienRetour>
+      <LienRetour to={estAdmin ? `${CHEMIN_ADMIN}/tournois` : '/organisateur/tournois'}>Retour aux tournois</LienRetour>
 
       <CartePage>
         {/* Bloc d'identite : titre + statut, infos en petits blocs

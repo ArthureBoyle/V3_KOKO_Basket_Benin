@@ -16,7 +16,8 @@ import { messageErreurApi } from '../../lib/erreurs'
 import { formaterAge, formaterJour, formaterNombre } from '../../lib/format'
 import { DialogueModifierIdentite } from './DialogueModifierIdentite'
 import { DialogueReinitialiserMotDePasse } from './DialogueReinitialiserMotDePasse'
-import { useCompte, useDesactiverCompte, useReactiverCompte } from './api'
+import { useCompte, useDesactiverCompte, useReactiverCompte, useRetirerAvatar } from './api'
+import { CHEMIN_ADMIN } from '../../config/cheminAdmin'
 
 function urlAvatar(chemin: string): string {
   return `${import.meta.env.VITE_API_URL}/uploads/${chemin}`
@@ -76,7 +77,9 @@ export function FicheCompte() {
   const [modificationOuverte, setModificationOuverte] = useState(false)
   const [motDePasseOuvert, setMotDePasseOuvert] = useState(false)
   const [desactivationOuverte, setDesactivationOuverte] = useState(false)
+  const [retraitPhotoOuvert, setRetraitPhotoOuvert] = useState(false)
 
+  const retirerPhoto = useRetirerAvatar(compteId)
   const desactiver = useDesactiverCompte(compteId)
   const reactiver = useReactiverCompte()
 
@@ -109,7 +112,7 @@ export function FicheCompte() {
 
   return (
     <section className="flex flex-col gap-4">
-      <LienRetour to="/admin/comptes">Retour aux comptes</LienRetour>
+      <LienRetour to={`${CHEMIN_ADMIN}/comptes`}>Retour aux comptes</LienRetour>
 
       <CartePage>
         {/* Bloc d'identite : avatar/ballon + nom, puis infos en petits
@@ -169,6 +172,11 @@ export function FicheCompte() {
           <Bouton variante="secondaire" onClick={() => setMotDePasseOuvert(true)}>
             Réinitialiser le mot de passe
           </Bouton>
+          {estJoueur && compte.joueur!.avatar && (
+            <Bouton variante="secondaire" onClick={() => setRetraitPhotoOuvert(true)}>
+              Retirer la photo
+            </Bouton>
+          )}
         </div>
       </CartePage>
 
@@ -244,6 +252,17 @@ export function FicheCompte() {
         compteId={compteId}
         ouvert={motDePasseOuvert}
         onFermer={() => setMotDePasseOuvert(false)}
+      />
+      <DialogueCodeAdmin
+        ouvert={retraitPhotoOuvert}
+        onFermer={() => setRetraitPhotoOuvert(false)}
+        titre="Retirer la photo de profil ?"
+        description="La photo est supprimée définitivement. Le joueur retrouve ses initiales et peut en choisir une autre."
+        libelleConfirmation="Retirer la photo"
+        onConfirmer={async (codeAdmin) => {
+          await retirerPhoto.mutateAsync(codeAdmin)
+          notifier('Photo retirée', 'succes')
+        }}
       />
       <DialogueCodeAdmin
         ouvert={desactivationOuverte}

@@ -14,6 +14,7 @@ import type { StatutTournoi, TournoiAdmin } from '../../types/api'
 import { useTournois } from './api'
 import { CartesTournois } from './CartesTournois'
 import { DialogueCreerTournoi } from './DialogueCreerTournoi'
+import { CHEMIN_ADMIN } from '../../config/cheminAdmin'
 
 type IdOnglet = 'tous' | StatutTournoi
 
@@ -158,7 +159,7 @@ export function ListeTournois() {
             </p>
           ) : (
             <>
-            {lignes && lignes.length > 0 && <CartesTournois tournois={lignes} lienBase="/admin/tournois" />}
+            {lignes && lignes.length > 0 && <CartesTournois tournois={lignes} lienBase={`${CHEMIN_ADMIN}/tournois`} />}
             <div className={lignes && lignes.length > 0 ? 'max-md:hidden' : ''}>
             <Tableau
               // Cle = onglet + recherche : force un vrai remontage de toutes
@@ -170,7 +171,7 @@ export function ListeTournois() {
               lignes={lignes}
               cleLigne={(tournoi) => tournoi.id}
               tonLigne={(tournoi) => TONS_STATUT[tournoi.statut]}
-              lienLigne={(tournoi) => `/admin/tournois/${tournoi.id}`}
+              lienLigne={(tournoi) => `${CHEMIN_ADMIN}/tournois/${tournoi.id}`}
               chargement={isLoading}
               actualisation={isFetching && !isLoading}
               vide={

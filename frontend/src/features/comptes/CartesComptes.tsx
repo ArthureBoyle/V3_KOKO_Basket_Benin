@@ -4,6 +4,7 @@ import { BlocInfo } from '../../components/ui/BlocInfo'
 import { CarteStatut } from '../../components/ui/CarteStatut'
 import { formaterAge } from '../../lib/format'
 import type { Compte } from '../../types/api'
+import { CHEMIN_ADMIN } from '../../config/cheminAdmin'
 
 // Mobile : le grand rectangle est le lien vers la fiche du compte, ses
 // infos sont rangees en petits blocs etiquetes (comme les cartes de tournoi).
@@ -12,7 +13,7 @@ export function CartesComptes({ comptes }: { comptes: Compte[] }) {
     <ul className="flex flex-col gap-3 md:hidden">
       {comptes.map((c) => (
         <li key={c.id}>
-          <Link to={`/admin/comptes/${c.id}`} className="block">
+          <Link to={`${CHEMIN_ADMIN}/comptes/${c.id}`} className="block">
             <CarteStatut ton={c.actif ? 'succes' : 'danger'}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">

@@ -15,6 +15,7 @@ import { useComptes } from './api'
 import { CartesComptes } from './CartesComptes'
 import { DialogueCreerJoueur } from './DialogueCreerJoueur'
 import { DialogueCreerOrganisateur } from './DialogueCreerOrganisateur'
+import { CHEMIN_ADMIN } from '../../config/cheminAdmin'
 
 type IdOnglet = 'joueurs' | 'organisateurs'
 
@@ -168,7 +169,7 @@ export function ListeComptes() {
               lignes={lignes}
               cleLigne={(compte) => compte.id}
               tonLigne={tonSelonStatut}
-              lienLigne={(compte) => `/admin/comptes/${compte.id}`}
+              lienLigne={(compte) => `${CHEMIN_ADMIN}/comptes/${compte.id}`}
               chargement={isLoading}
               actualisation={isFetching && !isLoading}
               vide={

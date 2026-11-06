@@ -1,5 +1,6 @@
 import { House, Trophy, User, Users, type LucideIcon } from 'lucide-react'
 import type { Role } from '../types/api'
+import { CHEMIN_ADMIN } from '../config/cheminAdmin'
 
 export interface EntreeNavigation {
   libelle: string
@@ -13,9 +14,9 @@ export interface EntreeNavigation {
 // lorsque son ecran existe (jamais de lien vers une page vide).
 export const NAVIGATION_PAR_ROLE: Record<Role, readonly EntreeNavigation[]> = {
   ADMIN: [
-    { libelle: 'Accueil', chemin: '/admin', icone: House },
-    { libelle: 'Comptes', chemin: '/admin/comptes', icone: Users },
-    { libelle: 'Tournois', chemin: '/admin/tournois', icone: Trophy },
+    { libelle: 'Accueil', chemin: CHEMIN_ADMIN, icone: House },
+    { libelle: 'Comptes', chemin: `${CHEMIN_ADMIN}/comptes`, icone: Users },
+    { libelle: 'Tournois', chemin: `${CHEMIN_ADMIN}/tournois`, icone: Trophy },
   ],
   ORGANISATEUR: [
     { libelle: 'Accueil', chemin: '/organisateur', icone: House },

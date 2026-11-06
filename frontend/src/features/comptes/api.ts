@@ -99,6 +99,19 @@ export function useDesactiverCompte(id: number) {
   })
 }
 
+// Moderation : retire la photo de profil d'un joueur (code admin requis).
+export function useRetirerAvatar(id: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (codeAdmin: string) =>
+      api<{ message: string }>(`/comptes/${id}/retirer-avatar`, { methode: 'PUT', corps: { codeAdmin } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CLE_COMPTES })
+      queryClient.invalidateQueries({ queryKey: cleCompte(id) })
+    },
+  })
+}
+
 export function useModifierEmailReel(id: number) {
   const queryClient = useQueryClient()
   return useMutation({
