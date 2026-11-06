@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useNotifier } from '../../components/notifications/contexte'
 import { Badge, type TonBadge } from '../../components/ui/Badge'
-import { LogoEquipe } from '../../components/ui/LogoEquipe'
 import { Bouton } from '../../components/ui/Bouton'
 import { CarteStatut } from '../../components/ui/CarteStatut'
 import { DialogueConfirmation } from '../../components/ui/DialogueConfirmation'
@@ -11,6 +10,7 @@ import { messageErreurApi } from '../../lib/erreurs'
 import { formaterHeureMatch, formaterJourMatch } from '../../lib/format'
 import type { EquipeResumeTournoi, MatchTournoi, StatutMatch } from '../../types/api'
 import { useEquipes } from './apiEquipes'
+import { LigneEquipe, type InfoEquipe } from './LigneEquipe'
 import { useAnnulerMatch, useMatchs, useReactiverMatch, useReporterMatch } from './apiMatchs'
 import { DialogueCreerMatch } from './DialogueCreerMatch'
 import { DialogueGererMatch } from './DialogueGererMatch'
@@ -45,25 +45,7 @@ const LIBELLE_STATUT: Record<StatutMatch, string> = {
   ANNULE: 'Annulé',
 }
 
-interface InfoEquipe {
-  nom: string
-  couleur: string
-  logo: string | null
-}
-
 const STATUTS_A_VENIR: StatutMatch[] = ['A_VENIR', 'REPORTE']
-
-function LigneEquipe({ info, score }: { info: InfoEquipe; score: number | null }) {
-  return (
-    <p className="flex items-center gap-3">
-      <LogoEquipe couleur={info.couleur} logo={info.logo} className="size-6" />
-      <span title={info.nom} className="line-clamp-2 min-w-0 flex-1 font-medium break-words">
-        {info.nom}
-      </span>
-      {score !== null && <span className="shrink-0 font-semibold tabular-nums">{score}</span>}
-    </p>
-  )
-}
 
 // Une carte = un bouton : toucher le match ouvre le panneau "Gerer"
 // (score, report, annulation...). Le statut normal est dit par la section ;

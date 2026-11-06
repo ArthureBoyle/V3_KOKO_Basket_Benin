@@ -5,7 +5,9 @@ import { SqueletteLignes } from '../../components/ui/Squelette'
 import { messageErreurApi } from '../../lib/erreurs'
 import { formaterHeureMatch, formaterJourMatch } from '../../lib/format'
 import type { AlgorithmeClassement, EquipeResumeTournoi, MatchTournoi } from '../../types/api'
+import { useEquipes } from './apiEquipes'
 import { useMatchs } from './apiMatchs'
+import { LigneEquipe, type InfoEquipe } from './LigneEquipe'
 import { DialogueStatsMatch } from './DialogueStatsMatch'
 
 interface Props {
@@ -26,6 +28,7 @@ interface Props {
 // classement joueurs (onglet Classement).
 export function OngletStatistiques({ tournoiId, equipes, algorithmeClassement, estAdmin = true }: Props) {
   const { data: matchs, isLoading, isError, error } = useMatchs(tournoiId)
+  const { data: equipesCompletes } = useEquipes(tournoiId)
   const [matchSelectionne, setMatchSelectionne] = useState<MatchTournoi | null>(null)
 
   if (isLoading) return <SqueletteLignes lignes={4} />
@@ -38,14 +41,18 @@ export function OngletStatistiques({ tournoiId, equipes, algorithmeClassement, e
   }
 
   const nomEquipe = (id: number) => equipes.find((e) => e.id === id)?.nom ?? '—'
-  const matchsTermines = (matchs ?? []).filter((m) => m.statut === 'TERMINE')
+  const infoEquipe = (id: number): InfoEquipe => {
+    const complete = equipesCompletes?.find((e) => e.id === id)
+    return { nom: nomEquipe(id), couleur: complete?.couleur ?? 'var(--secondary)', logo: complete?.logo ?? null }
+  }
+  // Le plus recent d'abord.
+  const matchsTermines = (matchs ?? [])
+    .filter((m) => m.statut === 'TERMINE')
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
   return (
     <div className="flex flex-col gap-5">
-      <p className="text-sm text-text-mute">
-        Clique sur un match terminé pour saisir les points/fautes/contres/temps de jeu de chaque joueur — c'est ce qui
-        remplit ensuite le classement des joueurs (onglet Classement).
-      </p>
+      <p className="text-sm text-text-mute">Touche un match terminé pour saisir les stats de chaque joueur.</p>
 
       {matchsTermines.length === 0 ? (
         <EtatVide
@@ -55,25 +62,25 @@ export function OngletStatistiques({ tournoiId, equipes, algorithmeClassement, e
       ) : (
         <div className="flex flex-col gap-2.5">
           {matchsTermines.map((match) => (
-            <button key={match.id} type="button" onClick={() => setMatchSelectionne(match)} className="w-full text-left">
+            <button
+              key={match.id}
+              type="button"
+              onClick={() => setMatchSelectionne(match)}
+              aria-label={`Saisir les stats du match ${infoEquipe(match.equipe1Id).nom} contre ${infoEquipe(match.equipe2Id).nom}`}
+              className="block w-full text-left"
+            >
               <CarteStatut ton="primaire">
                 <p className="font-mono text-2xs tracking-wide text-text-mute uppercase">
-                  {match.type} · {formaterJourMatch(match.date)} · {formaterHeureMatch(match.date)} · {match.lieu}
+                  {match.type} · {formaterJourMatch(match.date)} · {formaterHeureMatch(match.date)}
                 </p>
-                <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
-                  <p className="font-medium">
-                    {nomEquipe(match.equipe1Id)} <span className="text-text-mute">vs</span> {nomEquipe(match.equipe2Id)}
-                  </p>
-                  <div className="flex items-center gap-3">
-                    <span className="tabular-nums font-medium">
-                      {match.score1} – {match.score2}
-                    </span>
-                    {/* Sans ce libelle, rien n'indiquait que la carte etait
-                        cliquable ni ce qu'un clic declenchait. */}
-                    <span className="effet-remplissage effet-remplissage-primaire inline-flex items-center whitespace-nowrap rounded-md border border-primary-text/30 bg-primary-text/12 px-2.5 py-1 text-xs font-medium text-primary-text transition-[border-color] duration-150">
-                      <span className="contenu-remplissage">Saisir les stats →</span>
-                    </span>
+                <div className="mt-2 flex items-center gap-3">
+                  <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                    <LigneEquipe info={infoEquipe(match.equipe1Id)} score={match.score1} />
+                    <LigneEquipe info={infoEquipe(match.equipe2Id)} score={match.score2} />
                   </div>
+                  <span aria-hidden="true" className="text-text-mute">
+                    ›
+                  </span>
                 </div>
               </CarteStatut>
             </button>

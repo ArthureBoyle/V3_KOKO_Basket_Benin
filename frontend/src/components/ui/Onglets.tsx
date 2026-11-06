@@ -44,12 +44,13 @@ export function Onglets({ onglets, actif, onChanger, libelle, variante = 'soulig
 
   const classesConteneur =
     variante === 'segmentee'
-      ? // max-md:overflow-x-auto : un tournoi a 6 onglets ("Statistiques"
-        // compris) ne rentre plus a la largeur d'un telephone une fois
-        // chaque bouton force a garder sa largeur naturelle (voir
-        // max-md:flex-none plus bas) — la rangee defile a la place de
-        // clipper silencieusement les derniers onglets.
-        'flex gap-1 rounded-lg border border-border bg-elevated p-1 max-md:overflow-x-auto max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden'
+      ? // Jamais de defilement lateral cache : des onglets hors ecran sans
+        // aucun indice (barre masquee) sont introuvables. Mobile : jusqu'a 4
+        // onglets se partagent la largeur sur une ligne ; 5 ou plus (fiche
+        // tournoi : 6) passent en grille de 3 colonnes, donc TOUS visibles.
+        `rounded-lg border border-border bg-elevated p-1 ${
+          onglets.length > 4 ? 'grid grid-cols-3 gap-1 md:flex' : 'flex gap-1'
+        }`
       : 'flex gap-1 border-b border-border max-md:overflow-x-auto max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden'
 
   return (
@@ -58,11 +59,7 @@ export function Onglets({ onglets, actif, onChanger, libelle, variante = 'soulig
         const estActif = onglet.id === actif
         const classes =
           variante === 'segmentee'
-            ? `flex-1 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors duration-150 ${
-                // 4 onglets ou plus : largeur naturelle + defilement sur mobile.
-                // 3 ou moins : ils se partagent toute la largeur, meme sur mobile.
-                onglets.length > 3 ? 'max-md:flex-none' : ''
-              } ${
+            ? `flex-1 rounded-md px-2 py-2 text-sm font-medium whitespace-nowrap transition-colors duration-150 md:px-3 ${
                 estActif ? 'bg-primary text-on-primary' : 'text-text-mute hover:text-text'
               }`
             : `-mb-px border-b-2 px-3 py-2 text-sm whitespace-nowrap transition-colors duration-150 ${

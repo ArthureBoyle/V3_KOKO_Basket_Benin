@@ -1,3 +1,4 @@
+import { X } from 'lucide-react'
 import { useEffect, useId, useRef, type ReactNode } from 'react'
 
 interface DialogueProps {
@@ -41,10 +42,25 @@ export function Dialogue({ ouvert, onFermer, titre, description, children, ferme
       }}
       className="dialogue m-auto w-full max-w-md rounded-xl border border-border bg-surface p-0 text-text backdrop:bg-black/60"
     >
-      <div className="p-6">
-        <h2 id={idTitre} className="text-xl font-medium">
-          {titre}
-        </h2>
+      <div className="px-6 pb-6">
+        {/* Titre + bouton fermer, colles en haut quand le contenu defile :
+            sur mobile, le fond cliquable est presque invisible, il faut un
+            vrai moyen de fermer toujours a portee de pouce. */}
+        <div className="sticky top-0 z-10 -mx-6 flex items-start justify-between gap-3 bg-surface px-6 pt-6 pb-2">
+          <h2 id={idTitre} className="text-xl font-medium">
+            {titre}
+          </h2>
+          {!fermetureBloquee && (
+            <button
+              type="button"
+              onClick={onFermer}
+              aria-label="Fermer"
+              className="-mt-1 -mr-2 flex size-9 shrink-0 items-center justify-center rounded-md text-text-mute transition-colors duration-150 hover:bg-elevated hover:text-text"
+            >
+              <X aria-hidden="true" className="size-5" />
+            </button>
+          )}
+        </div>
         {description && (
           <div id={idDescription} className="mt-2 text-sm text-text-mute">
             {description}
