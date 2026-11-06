@@ -3,11 +3,13 @@ import { useNotifier } from '../../components/notifications/contexte'
 import { Bouton } from '../../components/ui/Bouton'
 import { CarteStatut } from '../../components/ui/CarteStatut'
 import { EtatVide } from '../../components/ui/EtatVide'
+import { LogoEquipe } from '../../components/ui/LogoEquipe'
 import { SqueletteLignes } from '../../components/ui/Squelette'
 import { useComptes } from '../comptes/api'
 import { messageErreurApi } from '../../lib/erreurs'
 import { formaterNomJoueur } from '../../lib/format'
 import type { EquipeResumeTournoi } from '../../types/api'
+import { useEquipes } from './apiEquipes'
 import { useAssignerJoueur, useDesassignerJoueur, useJoueursPool } from './api'
 import { RechercheJoueur, type JoueurRecherchable } from './RechercheJoueur'
 
@@ -30,6 +32,7 @@ interface Props {
 export function OngletLicences({ tournoiId, licencesMax, equipes, estAdmin = true }: Props) {
   const { data: pool, isLoading, isError, error } = useJoueursPool(tournoiId)
   const { data: comptes } = useComptes(estAdmin)
+  const { data: equipesCompletes } = useEquipes(tournoiId)
   const [texteRecherche, setTexteRecherche] = useState('')
   const [joueurChoisi, setJoueurChoisi] = useState<JoueurRecherchable | null>(null)
   const [erreur, setErreur] = useState<string | null>(null)
@@ -68,6 +71,7 @@ export function OngletLicences({ tournoiId, licencesMax, equipes, estAdmin = tru
   const nombre = pool?.length ?? 0
   const plein = nombre >= licencesMax
   const nomEquipe = (equipeId: number) => equipes.find((e) => e.id === equipeId)?.nom ?? '—'
+  const equipeComplete = (equipeId: number) => equipesCompletes?.find((e) => e.id === equipeId)
 
   const soumettre = async (evenement: FormEvent<HTMLFormElement>) => {
     evenement.preventDefault()
@@ -90,8 +94,8 @@ export function OngletLicences({ tournoiId, licencesMax, equipes, estAdmin = tru
       </p>
 
       {estAdmin && (
-        <form onSubmit={soumettre} className="flex items-end gap-3">
-          <div className="max-w-xs flex-1">
+        <form onSubmit={soumettre} className="flex flex-col gap-3 md:flex-row md:items-end">
+          <div className="w-full md:max-w-xs md:flex-1">
             <RechercheJoueur
               valeur={texteRecherche}
               onChangerValeur={(texte) => {
@@ -108,7 +112,7 @@ export function OngletLicences({ tournoiId, licencesMax, equipes, estAdmin = tru
             />
             {plein && <p className="mt-1 text-xs text-warning">Limite de licences atteinte pour ce tournoi.</p>}
           </div>
-          <Bouton type="submit" disabled={assigner.isPending || !joueurChoisi || plein}>
+          <Bouton type="submit" className="max-md:w-full" disabled={assigner.isPending || !joueurChoisi || plein}>
             {assigner.isPending ? 'Ajout…' : 'Ajouter au pool'}
           </Bouton>
         </form>
@@ -123,33 +127,44 @@ export function OngletLicences({ tournoiId, licencesMax, equipes, estAdmin = tru
         <div className="flex flex-col gap-2.5">
           {pool!.map((joueur) => (
             <CarteStatut key={joueur.id} ton="primaire">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="font-medium">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-medium break-words">
                     {joueur.prenom} {joueur.nomLegal}
                   </p>
                   <p className="font-mono text-xs text-text-mute">{joueur.idKoko}</p>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-text-mute">
-                    {joueur.equipeId ? nomEquipe(joueur.equipeId) : "Pas encore d'équipe"}
-                  </span>
-                  {estAdmin && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        desassigner.mutate(joueur.id, {
-                          onSuccess: () => notifier('Joueur retiré du pool', 'succes'),
-                        })
-                      }
-                      disabled={desassigner.isPending}
-                      className="effet-remplissage effet-remplissage-danger rounded-md border border-danger/30 bg-danger/12 px-2.5 py-1 text-xs font-medium text-danger transition-[border-color] duration-150 disabled:opacity-60"
-                    >
-                      <span className="contenu-remplissage">Retirer</span>
-                    </button>
-                  )}
-                </div>
+                {estAdmin && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      desassigner.mutate(joueur.id, {
+                        onSuccess: () => notifier('Joueur retiré du pool', 'succes'),
+                      })
+                    }
+                    disabled={desassigner.isPending}
+                    className="effet-remplissage effet-remplissage-danger shrink-0 rounded-md border border-danger/30 bg-danger/12 px-2.5 py-1 text-xs font-medium text-danger transition-[border-color] duration-150 disabled:opacity-60"
+                  >
+                    <span className="contenu-remplissage">Retirer</span>
+                  </button>
+                )}
               </div>
+              {/* L'equipe sur sa propre ligne : plus de texte serre contre le
+                  bouton, et le logo s'y voit. */}
+              <p className="mt-2.5 flex items-center gap-2 text-sm">
+                {joueur.equipeId ? (
+                  <>
+                    <LogoEquipe
+                      couleur={equipeComplete(joueur.equipeId)?.couleur ?? 'var(--secondary)'}
+                      logo={equipeComplete(joueur.equipeId)?.logo}
+                      className="size-5"
+                    />
+                    <span className="min-w-0 truncate">{nomEquipe(joueur.equipeId)}</span>
+                  </>
+                ) : (
+                  <span className="text-text-mute">Pas encore d'équipe</span>
+                )}
+              </p>
             </CarteStatut>
           ))}
         </div>
