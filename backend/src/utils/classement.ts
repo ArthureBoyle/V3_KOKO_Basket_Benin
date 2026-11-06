@@ -36,6 +36,7 @@ export interface EquipeInfo {
   id: number;
   nom: string;
   couleur: string;
+  logo?: string | null;
 }
 
 export interface CoefficientsClassement {
@@ -240,6 +241,7 @@ export interface EquipeClassee {
   id: number;
   nom: string;
   couleur: string;
+  logo?: string | null;
   victoires: number;
   defaites: number;
   points: number;
@@ -269,7 +271,7 @@ export function calculerClassementEquipes(
       else if (scoreEquipe < scoreAdverse) defaites += 1;
     }
 
-    return { id: equipe.id, nom: equipe.nom, couleur: equipe.couleur, victoires, defaites, points: victoires * 2 };
+    return { id: equipe.id, nom: equipe.nom, couleur: equipe.couleur, logo: equipe.logo, victoires, defaites, points: victoires * 2 };
   });
 
   classement.sort((a, b) => b.points - a.points || b.victoires - a.victoires);

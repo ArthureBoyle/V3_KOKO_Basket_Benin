@@ -100,8 +100,8 @@ export async function getMesMatchs(req: AuthRequest, res: Response, next: NextFu
       where: { tournoiId },
       orderBy: { date: "asc" },
       include: {
-        equipe1: { select: { id: true, nom: true, couleur: true } },
-        equipe2: { select: { id: true, nom: true, couleur: true } },
+        equipe1: { select: { id: true, nom: true, couleur: true, logo: true } },
+        equipe2: { select: { id: true, nom: true, couleur: true, logo: true } },
       },
     });
 

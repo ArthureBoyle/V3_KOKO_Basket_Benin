@@ -76,7 +76,7 @@ export async function getClassementEquipes(req: AuthRequest, res: Response, next
     const matches = await prisma.match.findMany({ where: { tournoiId } });
     const equipes = await prisma.equipe.findMany({
       where: { tournoiId },
-      select: { id: true, nom: true, couleur: true },
+      select: { id: true, nom: true, couleur: true, logo: true },
     });
 
     const classement = calculerClassementEquipes(matches, equipes);
